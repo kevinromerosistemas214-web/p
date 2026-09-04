@@ -1,0 +1,3213 @@
+<!doctype html>
+<html class="no-js" lang="es">
+
+<head>
+  <meta charset="utf-8">
+  <title>Bitácora de Salidas - Club de Golf San Carlos</title>
+  <meta name="description" content="Pantalla de salidas y tee times para el Club de Golf San Carlos.">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <script>
+      // =========================================================================
+      // SCROLL INICIAL: solo corregimos la posición restaurada al cargar.
+      // NO se instala ningún listener que bloquee el scroll manual del usuario.
+      // =========================================================================
+      if ('scrollRestoration' in history) {
+          history.scrollRestoration = 'manual';
+      }
+
+      window.addEventListener('pageshow', () => {
+          window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      });
+
+      // Modo pantalla/kiosco: se activa con ?kiosco=1 en la URL. Se marca aquí,
+      // antes de que cargue cualquier CSS o contenido, para que la barra de
+      // admin nunca llegue a pintarse (sin parpadeo) en vez de ocultarse después.
+      if (new URLSearchParams(window.location.search).get('kiosco') === '1') {
+          document.documentElement.classList.add('modo-kiosco');
+      }
+  </script>
+
+  <link rel="stylesheet" href="css/normalize.css">
+  <link rel="stylesheet" href="css/main.css">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght=500;700;800&family=Montserrat:wght=300;400;600;700&display=swap" rel="stylesheet">
+
+  <meta name="theme-color" content="#113426">
+
+  <style>
+    :root {
+        --verde-primario: #113426;
+        --verde-oscuro: #091a13;
+        --verde-hover: #1b4d39;
+        --dorado: #bc9c57;
+        --dorado-brillante: #d4af37;
+        --dorado-claro: #f4efe2;
+        --oscuro: #1c1c1c;
+        --gris-fondo: #f5f6f7;
+        --blanco: #ffffff;
+        --borde: #e2e8f0;
+        --panel-bg: rgba(13, 27, 21, 0.82);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* overflow-anchor: none en el documento entero — evita que el navegador
+       reajuste el scroll automáticamente cuando el contenido por encima del
+       viewport cambia de tamaño (por ejemplo cuando terminan de cargar los
+       videos de fondo o el video del gate de login). Sin esto, el "scroll
+       anchoring" nativo del navegador puede desplazar la página después de
+       que ya la habíamos puesto en scrollTo(0,0). */
+    html {
+        overflow-anchor: none;
+    }
+
+    body {
+        overflow-anchor: none;
+        font-family: 'Montserrat', sans-serif;
+        background:
+            linear-gradient(160deg, rgba(238,241,239,0.93) 0%, rgba(245,246,247,0.90) 50%, rgba(238,242,238,0.93) 100%),
+            url('img/horizontes.jpg');
+        background-size: cover;
+        background-position: center;
+        /* NO usar background-attachment: fixed aquí: en navegadores de TV
+           (Samsung Internet/Tizen) con aceleración de GPU limitada, un fondo
+           "fixed" obliga a repintar toda la imagen en cada frame de scroll,
+           especialmente en pantallas 4K. Con "scroll" el fondo se compone
+           una sola vez junto con el resto del contenido. */
+        background-attachment: scroll;
+        color: var(--oscuro);
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-height: 100vh;
+        position: relative;
+    }
+
+    /* Acentos decorativos de naturaleza a los costados, solo en pantallas muy
+       anchas (donde hoy queda espacio vacío junto a las tablas). Puramente
+       ambientales: no interactivos, detrás de todo el contenido. */
+    .acento-lateral {
+        display: none;
+        position: fixed; top: 0; bottom: 0; width: 260px; z-index: -1;
+        pointer-events: none; opacity: 0.16; filter: grayscale(25%) sepia(15%);
+        background-size: cover;
+    }
+    .acento-lateral-izq { left: 0; background-image: url('img/arbol.jpg'); background-position: left center; }
+    .acento-lateral-der { right: 0; background-image: url('img/campo.jpg'); background-position: right center; }
+
+    @media (min-width: 1900px) {
+        .acento-lateral { display: block; }
+        /* En modo normal (no kiosco), tope el ancho de las tablas en monitores
+           muy anchos para que sí quede espacio lateral visible para el marco
+           decorativo. El modo kiosco (TV) conserva el estirado edge-to-edge
+           tal cual estaba, ya que ahí no hay barra de admin ni margen que
+           aprovechar. */
+        html:not(.modo-kiosco) .contenedor-doble { max-width: 1700px; flex: 0 1 auto; }
+    }
+    html.modo-kiosco .acento-lateral { display: none !important; }
+
+    .barra-global-admin {
+        width: 100%; max-width: 1400px;
+        display: flex; justify-content: flex-end; align-items: center;
+        gap: 10px; flex-wrap: wrap; margin-bottom: 15px;
+    }
+
+    .contenedor-doble {
+        width: 100%; max-width: 1400px;
+        display: flex; gap: 20px; flex-wrap: wrap; justify-content: center;
+    }
+
+    .pantalla-contenedor {
+        flex: 1 1 620px; max-width: 690px;
+        background-color: var(--blanco);
+        border: 4px solid var(--verde-primario);
+        border-top: 12px solid var(--verde-primario);
+        border-radius: 12px;
+        box-shadow: 0 20px 45px rgba(17, 52, 38, 0.16), 0 4px 12px rgba(0,0,0,0.06);
+        padding: 30px 25px; margin-bottom: 20px; position: relative;
+    }
+
+    .zona-superior-imagen {
+        position: relative;
+        background: linear-gradient(135deg, var(--dorado-claro) 0%, #ffffff 55%, var(--dorado-claro) 100%);
+        border-radius: 8px 8px 0 0;
+        margin: -30px -25px 25px -25px;
+        padding: 20px 25px 0 25px;
+        overflow: hidden;
+    }
+
+    .zona-superior-imagen::after {
+        content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3px;
+        background: linear-gradient(90deg, transparent, var(--dorado), transparent);
+    }
+
+    /* Video del logo como fondo de toda la franja superior (reloj, fecha y
+       "Salidas de Hoy" quedan superpuestos encima, con un degradado oscuro
+       de por medio para que el texto siga siendo legible). */
+    .video-fondo-superior {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: center;
+        z-index: 0;
+    }
+
+    .overlay-fondo-superior {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(160deg, rgba(17,52,38,0.75) 0%, rgba(13,30,22,0.68) 55%, rgba(17,52,38,0.78) 100%);
+        z-index: 1;
+    }
+
+    .zona-superior-imagen > .fila-exportar,
+    .zona-superior-imagen > .barra-reloj,
+    .zona-superior-imagen > .encabezado {
+        position: relative;
+        z-index: 2;
+    }
+
+    .barra-reloj { text-align: center; margin-bottom: 15px; }
+
+    .reloj-digital {
+        background: linear-gradient(135deg, var(--verde-primario) 0%, var(--verde-hover) 100%);
+        color: var(--dorado);
+        border: 1px solid var(--dorado);
+        padding: 6px 20px; font-size: 0.95rem; font-weight: bold; letter-spacing: 1.5px;
+        border-radius: 30px; display: inline-block;
+        box-shadow: 0 4px 10px rgba(17, 52, 38, 0.25);
+    }
+
+    .encabezado {
+        display: flex; align-items: center; justify-content: space-between;
+        border-bottom: 2px solid var(--dorado-claro);
+        padding-bottom: 25px; margin-bottom: 25px; flex-wrap: wrap; gap: 15px;
+    }
+
+    .logo-club { flex: 1; display: flex; align-items: center; min-height: 90px; }
+
+    .logo-club-img {
+        width: 100%; height: 100px; object-fit: cover; border-radius: 10px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+        transition: transform 0.3s ease;
+    }
+
+    .logo-club-img:hover { transform: scale(1.02); }
+
+    .fecha-central {
+        flex: 2; text-align: center;
+        font-family: 'Cinzel', serif; font-size: 1.6rem; font-weight: 700;
+        color: var(--dorado-claro); text-transform: uppercase; letter-spacing: 1.5px;
+        text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    }
+
+    .bloque-derecho {
+        flex: 1; text-align: right;
+        display: flex; flex-direction: column; align-items: flex-end; gap: 12px;
+    }
+
+    .texto-info h2 {
+        font-family: 'Cinzel', serif; font-size: 1.25rem; color: var(--blanco);
+        font-weight: 800; line-height: 1.2; letter-spacing: 1px;
+        text-shadow: 0 2px 6px rgba(0,0,0,0.45);
+    }
+
+    .texto-info p {
+        font-size: 0.8rem; color: var(--dorado);
+        text-transform: uppercase; font-weight: 700; letter-spacing: 1.5px;
+    }
+
+    .admin-actions {
+        display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: flex-end;
+    }
+
+    .btn-guardar, .btn-usuarios, .btn-config-hora {
+        background-color: var(--verde-primario); color: var(--blanco);
+        border: 1px solid var(--dorado);
+        padding: 8px 16px; font-family: 'Montserrat', sans-serif;
+        font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px;
+        border-radius: 4px; cursor: pointer; transition: all 0.25s ease;
+    }
+
+    .btn-guardar { background-color: #2e7d32; border: 1px solid #1b5e20; display: none; }
+    .btn-guardar:hover { background-color: #388e3c; box-shadow: 0 4px 8px rgba(0,0,0,0.1); transform: translateY(-1px); }
+
+    .btn-config-hora { background-color: #1565c0; border: 1px solid #0d47a1; display: none; }
+    .btn-config-hora:hover { background-color: #1976d2; box-shadow: 0 4px 8px rgba(0,0,0,0.1); transform: translateY(-1px); }
+
+    .btn-vaciado { background-color: #c62828; border: 1px solid #8e0000; display: none; }
+    .btn-vaciado:hover { background-color: #d32f2f; box-shadow: 0 4px 8px rgba(0,0,0,0.1); transform: translateY(-1px); }
+
+    .btn-usuarios { background-color: var(--dorado); border: 1px solid var(--verde-primario); color: var(--verde-primario); display: none; }
+    .btn-usuarios:hover { background-color: #a88849; box-shadow: 0 4px 8px rgba(0,0,0,0.1); transform: translateY(-1px); }
+
+    .btn-noticias {
+        background-color: var(--verde-primario); color: var(--dorado-claro); border: 1px solid var(--dorado);
+        padding: 8px 16px; font-family: 'Montserrat', sans-serif;
+        font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px;
+        border-radius: 4px; cursor: pointer; transition: all 0.25s ease; display: none;
+    }
+    .btn-noticias:hover { background-color: var(--verde-hover); box-shadow: 0 4px 8px rgba(0,0,0,0.1); transform: translateY(-1px); }
+    .btn-noticias.activa-indicador {
+        background-color: var(--dorado); color: var(--verde-primario); border: 1px solid var(--verde-primario);
+    }
+    .btn-noticias.activa-indicador:hover { background-color: #a88849; }
+
+    .btn-consultar {
+        background-color: #6a1b9a; color: var(--blanco); border: 1px solid #4a0072;
+        padding: 8px 16px; font-family: 'Montserrat', sans-serif;
+        font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px;
+        border-radius: 4px; cursor: pointer; transition: all 0.25s ease; display: none;
+    }
+    .btn-consultar:hover { background-color: #7b1fa2; box-shadow: 0 4px 8px rgba(0,0,0,0.1); transform: translateY(-1px); }
+
+    .btn-historial {
+        background-color: #37474f; color: var(--blanco); border: 1px solid #1c2529;
+        padding: 8px 16px; font-family: 'Montserrat', sans-serif;
+        font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px;
+        border-radius: 4px; cursor: pointer; transition: all 0.25s ease; display: none;
+    }
+    .btn-historial:hover { background-color: #455a64; box-shadow: 0 4px 8px rgba(0,0,0,0.1); transform: translateY(-1px); }
+
+    .btn-socios {
+        background-color: #00695c; color: var(--blanco); border: 1px solid #004d40;
+        padding: 8px 16px; font-family: 'Montserrat', sans-serif;
+        font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px;
+        border-radius: 4px; cursor: pointer; transition: all 0.25s ease; display: none;
+    }
+    .btn-socios:hover { background-color: #00897b; box-shadow: 0 4px 8px rgba(0,0,0,0.1); transform: translateY(-1px); }
+
+    /* Filas de captura masiva de socios (varias filas seguidas, tres campos c/u) */
+    .fila-socio-nueva {
+        display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap;
+        margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px dashed var(--borde);
+    }
+    .fila-socio-nueva .grupo-input { margin-bottom: 0; flex: 1 1 140px; }
+    .btn-quitar-fila-socio {
+        background-color: #d32f2f; color: var(--blanco); border: 1px solid #b71c1c;
+        width: 32px; height: 38px; font-size: 0.9rem; font-weight: 700;
+        border-radius: 4px; cursor: pointer; flex-shrink: 0;
+    }
+    .btn-quitar-fila-socio:hover { background-color: #b71c1c; }
+
+    /* Cuadro flotante de sugerencias del autocompletado de socios (posicionado
+       por JS justo debajo de la celda que se está editando) */
+    #cajaSugerenciasSocios {
+        position: absolute; z-index: 4000; background: var(--blanco);
+        border: 1px solid var(--dorado); border-radius: 6px;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.18);
+        max-height: 220px; overflow-y: auto; display: none;
+        min-width: 180px; font-size: 0.85rem;
+    }
+    .opcion-sugerencia-socio {
+        padding: 7px 12px; cursor: pointer; border-bottom: 1px solid var(--borde);
+        color: var(--oscuro);
+    }
+    .opcion-sugerencia-socio:last-child { border-bottom: none; }
+    .opcion-sugerencia-socio:hover { background-color: var(--dorado-claro); }
+
+    .fila-exportar { display: none; justify-content: center; gap: 8px; margin-bottom: 12px; }
+    .btn-exportar {
+        background-color: var(--blanco); color: var(--verde-primario); border: 1px solid var(--dorado);
+        padding: 5px 12px; font-family: 'Montserrat', sans-serif;
+        font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+        border-radius: 20px; cursor: pointer; transition: all 0.2s ease;
+    }
+    .btn-exportar:hover { background-color: var(--dorado-claro); transform: translateY(-1px); }
+
+    .modal-contenido-historial { max-width: 960px; }
+    .fila-filtros-historial { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 10px; }
+    .fila-filtros-historial .grupo-input { margin-bottom: 0; flex: 1 1 140px; }
+    .fila-filtros-historial button { margin-top: 0; width: auto; white-space: nowrap; }
+
+    .tabla-historial { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+    .tabla-historial th {
+        background-color: var(--verde-primario); color: var(--blanco); padding: 6px 5px;
+        text-transform: uppercase; font-size: 0.63rem; letter-spacing: 0.5px; text-align: left; position: sticky; top: 0;
+    }
+    .tabla-historial td { padding: 6px 5px; border-bottom: 1px solid var(--borde); vertical-align: top; }
+    .tabla-historial tr:nth-child(even) { background-color: #faf9f6; }
+    .etiqueta-accion {
+        display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.65rem;
+        font-weight: 700; text-transform: uppercase; color: var(--blanco);
+    }
+    .etiqueta-accion.editar_hoyo { background-color: #1565c0; }
+    .etiqueta-accion.vaciar_hoyo { background-color: #c62828; }
+    .etiqueta-accion.insertar_hoyo { background-color: #8d6708; }
+    .diferencias-historial { margin: 0; padding-left: 16px; }
+    .diferencias-historial li { margin-bottom: 2px; }
+    .contenedor-tabla-historial { max-height: 55vh; overflow-y: auto; }
+
+    /* =====================================================================
+       MODO PANTALLA / KIOSCO (?kiosco=1)
+       Oculta TODO lo de administración (login, exportar, editar, historial)
+       sin importar si hay una sesión activa en ese dispositivo/pestaña, para
+       dejar únicamente las dos tablas de salidas visibles. Se usa !important
+       porque estos elementos también reciben "display" desde JavaScript
+       según el estado de sesión, y el modo kiosco debe ganar siempre.
+       El footer de noticias NO se oculta en modo kiosco: es información
+       pública pensada también para las pantallas del club.
+       ===================================================================== */
+    html.modo-kiosco .barra-global-admin,
+    html.modo-kiosco .admin-actions,
+    html.modo-kiosco .fila-exportar {
+        display: none !important;
+    }
+
+    html.modo-kiosco body { padding-top: 10px; }
+    html.modo-kiosco .contenedor-doble { max-width: 1600px; }
+
+    /* =====================================================================
+       BOTÓN DE PANTALLA COMPLETA
+       Ahora siempre visible (tanto en modo kiosco/TV como en la vista normal
+       de administración), como un botón discreto en la esquina superior
+       IZQUIERDA (position:fixed), con la misma animación de opacidad que
+       "Iniciar Sesión" (0.07 en reposo -> 1 al pasar el mouse/tocar), pero
+       de menor tamaño. Se puso a la izquierda -y no a la derecha, donde
+       vive la barra de administración con "Iniciar Sesión"- para que nunca
+       se encime con esos botones.
+       ===================================================================== */
+    .btn-pantalla-completa {
+        display: inline-block;
+        position: fixed; top: 14px; left: 14px; z-index: 3000;
+        background-color: var(--verde-primario); color: var(--blanco);
+        border: 1px solid var(--dorado);
+        padding: 6px 12px; font-family: 'Montserrat', sans-serif;
+        font-size: 0.66rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px;
+        border-radius: 4px; cursor: pointer;
+        opacity: 0.07; transition: opacity 0.25s ease, background-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
+    }
+    .btn-pantalla-completa:hover,
+    .btn-pantalla-completa:focus,
+    .btn-pantalla-completa:active {
+        opacity: 1; background-color: var(--verde-hover);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1); transform: translateY(-1px);
+    }
+    @media (hover: none) and (pointer: coarse) {
+        .btn-pantalla-completa { opacity: 0.55; }
+    }
+    @media (max-width: 768px) {
+        .btn-pantalla-completa { padding: 5px 10px; font-size: 0.6rem; top: 8px; left: 8px; }
+    }
+
+    .usuario-logeado {
+        font-size: 0.8rem; color: var(--verde-primario); font-weight: bold;
+        background-color: var(--dorado-claro); padding: 6px 12px; border-radius: 4px;
+        border: 1px solid var(--dorado); display: none; cursor: pointer; transition: background-color 0.2s ease;
+    }
+    .usuario-logeado:hover { background-color: #ebdcb9; }
+
+    .indicador-autoguardado {
+        font-size: 0.7rem; color: #2e7d32; font-weight: 700; letter-spacing: 0.4px;
+        opacity: 0; transition: opacity 0.4s ease; white-space: nowrap;
+    }
+    .indicador-autoguardado.visible { opacity: 1; }
+
+    .modal-usuarios, .modal-hora, .modal-consultar, .modal-noticias {
+        display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background-color: rgba(0, 0, 0, 0.6);
+        justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(3px);
+    }
+
+    @keyframes fundidoFondoLogin { from { background-color: rgba(0, 0, 0, 0); backdrop-filter: blur(0); } to { background-color: rgba(0, 0, 0, 0.6); backdrop-filter: blur(3px); } }
+    @keyframes entradaModalLogin { from { opacity: 0; transform: translateY(28px) scale(0.94); } to { opacity: 1; transform: translateY(0) scale(1); } }
+    @keyframes vibrarModalLogin {
+        10%, 90% { transform: translateX(-1px); }
+        20%, 80% { transform: translateX(2px); }
+        30%, 50%, 70% { transform: translateX(-5px); }
+        40%, 60% { transform: translateX(5px); }
+    }
+    @keyframes girarSpinnerLogin { to { transform: rotate(360deg); } }
+
+    @keyframes flotarLogoLogin {
+        0%, 100% { transform: translateY(0); }
+        50%      { transform: translateY(-4px); }
+    }
+
+    .modal-contenido {
+        background-color: var(--blanco); padding: 30px; border-radius: 8px;
+        width: 90%; max-width: 360px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        position: relative; border-top: 6px solid var(--verde-primario);
+        max-height: 85vh; overflow-y: auto;
+    }
+
+    .modal-contenido-usuarios { max-width: 640px; }
+    .modal-contenido-consultar { max-width: 920px; }
+    .modal-contenido-noticias { max-width: 480px; }
+
+    /* =====================================================================
+       PANTALLA DE LOGIN GLOBAL (GATE DE ACCESO)
+       Reemplaza el login modal anterior (pequeño botón fantasma + ventana
+       emergente). Ahora el acceso es una pantalla completa con fondo de
+       video (lock.mp4) que cubre TODO el sitio hasta que haya sesión
+       válida — nadie puede ver ni editar las tablas sin iniciar sesión
+       primero (excepto en modo kiosco, que la oculta siempre vía CSS
+       abajo). Se muestra al cargar la página y se oculta con
+       ocultarLoginGate() en cuanto aplicarSesionUI() recibe un usuario.
+       ===================================================================== */
+    .pantalla-login-global {
+        position: fixed; inset: 0; z-index: 99999;
+        display: flex; justify-content: center; align-items: center; padding: 20px;
+        background-color: var(--verde-oscuro); overflow: hidden;
+        overflow-anchor: none;
+        transition: opacity 0.5s ease, visibility 0.5s ease;
+    }
+    .pantalla-login-global.login-oculto {
+        opacity: 0; visibility: hidden; pointer-events: none;
+    }
+    .video-lock-bg {
+        position: absolute; inset: 0; width: 100%; height: 100%;
+        object-fit: cover; object-position: center; z-index: 1;
+        filter: brightness(0.65) contrast(1.1); transform: scale(1.02);
+    }
+    .overlay-lock-bg {
+        position: absolute; inset: 0; z-index: 2;
+        background: radial-gradient(circle at center, rgba(17, 52, 38, 0.45) 0%, rgba(6, 17, 12, 0.88) 100%);
+        backdrop-filter: blur(4px);
+    }
+    .tarjeta-login-global {
+        position: relative; z-index: 10; width: 100%; max-width: 980px; min-height: 540px;
+        background: rgba(14, 26, 20, 0.75); border: 1px solid rgba(188, 156, 87, 0.35);
+        border-radius: 24px; box-shadow: 0 30px 70px rgba(0, 0, 0, 0.65), 0 0 30px rgba(188, 156, 87, 0.15);
+        display: flex; overflow: hidden;
+        backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
+        animation: entradaLoginCard 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes entradaLoginCard {
+        from { opacity: 0; transform: scale(0.94) translateY(20px); }
+        to   { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    .panel-form-global {
+        flex: 1 1 52%; background: rgba(10, 20, 15, 0.85); padding: 45px 42px;
+        display: flex; flex-direction: column; justify-content: center;
+        border-right: 1px solid rgba(255, 255, 255, 0.08); position: relative; z-index: 2;
+    }
+    .header-login-form { margin-bottom: 30px; }
+    .marca-login-form { display: inline-flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+    .marca-login-form img { width: 44px; height: 44px; object-fit: contain; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5)); }
+    .marca-login-form span {
+        font-family: 'Cinzel', serif; font-size: 1.05rem; font-weight: 700; color: var(--dorado-claro);
+        letter-spacing: 1.5px; text-transform: uppercase; line-height: 1.2;
+    }
+    .header-login-form h2 {
+        font-family: 'Cinzel', serif; font-size: 2rem; color: var(--blanco);
+        font-weight: 700; letter-spacing: 0.5px; margin-bottom: 6px;
+    }
+    .header-login-form p { color: #9ab3a5; font-size: 0.85rem; font-weight: 400; letter-spacing: 0.3px; }
+
+    .grupo-campo-lock { margin-bottom: 20px; }
+    .grupo-campo-lock label {
+        display: block; font-size: 0.72rem; font-weight: 700; color: var(--dorado);
+        text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;
+    }
+    .input-envoltorio-lock { position: relative; display: flex; align-items: center; }
+    .input-envoltorio-lock input {
+        width: 100%; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 12px; padding: 14px 44px 14px 16px; color: var(--blanco);
+        font-family: 'Montserrat', sans-serif; font-size: 0.95rem; transition: all 0.25s ease; outline: none;
+    }
+    .input-envoltorio-lock input:focus {
+        background: rgba(255, 255, 255, 0.09); border-color: var(--dorado);
+        box-shadow: 0 0 14px rgba(188, 156, 87, 0.25);
+    }
+    .input-envoltorio-lock input::placeholder { color: rgba(255, 255, 255, 0.3); }
+    .icono-lock-input {
+        position: absolute; right: 16px; font-size: 1rem; color: var(--dorado); opacity: 0.7;
+        pointer-events: none; transition: transform 0.2s ease, opacity 0.2s ease;
+    }
+    .input-envoltorio-lock input:focus + .icono-lock-input { opacity: 1; transform: scale(1.1); }
+
+    .btn-acceder-global {
+        width: 100%; margin-top: 10px; padding: 15px;
+        background: linear-gradient(135deg, var(--dorado) 0%, #a88849 100%);
+        border: none; border-radius: 12px; color: var(--verde-oscuro);
+        font-family: 'Montserrat', sans-serif; font-size: 0.85rem; font-weight: 800;
+        text-transform: uppercase; letter-spacing: 1.8px; cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        box-shadow: 0 6px 20px rgba(188, 156, 87, 0.3); position: relative; overflow: hidden;
+    }
+    .btn-acceder-global:hover {
+        transform: translateY(-2px); box-shadow: 0 8px 26px rgba(188, 156, 87, 0.45);
+        background: linear-gradient(135deg, #cfb06b 0%, var(--dorado) 100%);
+    }
+    .btn-acceder-global:active { transform: translateY(0) scale(0.98); }
+    .btn-acceder-global.cargando { color: transparent; pointer-events: none; }
+    .btn-acceder-global.cargando::after {
+        content: ''; position: absolute; top: 50%; left: 50%; width: 20px; height: 20px;
+        margin: -10px 0 0 -10px; border: 3px solid rgba(17, 52, 38, 0.4);
+        border-top-color: var(--verde-oscuro); border-radius: 50%;
+        animation: girarSpinnerLogin 0.6s linear infinite;
+    }
+
+    .pie-login-seguridad { margin-top: 24px; text-align: center; font-size: 0.72rem; color: #728a7d; letter-spacing: 0.5px; }
+
+    /* Enlace de descubrimiento hacia el portal de socios (portal-socios.html).
+       Vive dentro del gate de acceso -que es lo único visible antes de iniciar
+       sesión- para que cualquier socio que llegue aquí por error encuentre el
+       camino correcto sin necesidad de conocer la URL de memoria. */
+    .enlace-portal-socios {
+        display: block; margin-top: 14px; text-align: center;
+        font-size: 0.76rem; color: var(--dorado-claro); text-decoration: none;
+        border: 1px solid rgba(188, 156, 87, 0.4); border-radius: 10px;
+        padding: 10px 14px; transition: background-color 0.2s ease, border-color 0.2s ease;
+    }
+    .enlace-portal-socios:hover {
+        background-color: rgba(188, 156, 87, 0.12); border-color: var(--dorado);
+    }
+
+    .panel-visual-global {
+        flex: 1 1 48%; background: rgba(17, 52, 38, 0.25); position: relative;
+        display: flex; flex-direction: column; justify-content: space-between; padding: 45px 35px; overflow: hidden;
+    }
+    .panel-visual-global::before {
+        content: ''; position: absolute; top: -30%; right: -30%; width: 320px; height: 320px;
+        background: radial-gradient(circle, rgba(188, 156, 87, 0.22) 0%, transparent 70%); pointer-events: none;
+    }
+    .tarjeta-visual-insignia {
+        background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 20px; padding: 30px 20px; text-align: center; backdrop-filter: blur(12px);
+        margin-top: auto; margin-bottom: auto; box-shadow: 0 15px 35px rgba(0, 0, 0, 0.35);
+    }
+    .tarjeta-visual-insignia img {
+        width: 110px; height: 110px; object-fit: contain; margin-bottom: 15px;
+        filter: drop-shadow(0 6px 12px rgba(0,0,0,0.5));
+    }
+    .tarjeta-visual-insignia h3 { font-family: 'Cinzel', serif; font-size: 1.35rem; color: var(--blanco); letter-spacing: 1px; margin-bottom: 4px; }
+    .tarjeta-visual-insignia p { font-size: 0.8rem; color: var(--dorado); font-weight: 700; text-transform: uppercase; letter-spacing: 2px; }
+    .pie-panel-visual { text-align: center; font-size: 0.75rem; color: rgba(244, 239, 226, 0.6); letter-spacing: 0.5px; }
+
+    @media (max-width: 820px) {
+        .tarjeta-login-global { flex-direction: column; max-width: 440px; border-radius: 18px; }
+        .panel-visual-global { display: none; }
+        .panel-form-global { padding: 35px 25px; border-right: none; }
+        .header-login-form h2 { font-size: 1.6rem; }
+    }
+
+    @keyframes vibrarError {
+        10%, 90% { transform: translateX(-2px); }
+        20%, 80% { transform: translateX(3px); }
+        30%, 50%, 70% { transform: translateX(-6px); }
+        40%, 60% { transform: translateX(6px); }
+    }
+    .tarjeta-login-global.vibrar { animation: vibrarError 0.45s ease; }
+
+    /* La app principal (barra admin + tablas + footer) queda envuelta en
+       .aplicacion-principal — se usa como gancho para futuros efectos
+       (blur/opacidad) mientras el gate de login está encima. */
+    .aplicacion-principal {
+        width: 100%; display: flex; flex-direction: column; align-items: center;
+        transition: filter 0.4s ease, opacity 0.4s ease;
+    }
+
+    html.modo-kiosco .pantalla-login-global { display: none !important; }
+
+    /* =====================================================================
+       MODAL DE CONFIRMACIÓN
+       Reemplazo del confirm() nativo del navegador para que las acciones
+       sensibles (cerrar sesión, vaciar, eliminar, sobrescribir) se vean con
+       la misma identidad visual del resto del sitio, en vez del cuadro gris
+       genérico del navegador/TV.
+       ===================================================================== */
+    .modal-confirmar {
+        display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background-color: rgba(0, 0, 0, 0.6); backdrop-filter: blur(3px);
+        justify-content: center; align-items: center; z-index: 5000;
+        animation: fundidoFondoLogin 0.2s ease;
+    }
+    .modal-contenido-confirmar {
+        max-width: 380px; text-align: center; padding: 34px 30px 28px;
+        animation: entradaModalLogin 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.1);
+    }
+    .icono-confirmar {
+        font-size: 2.2rem; margin-bottom: 12px; line-height: 1;
+        animation: flotarLogoLogin 2.2s ease-in-out infinite;
+    }
+    .modal-contenido-confirmar h3 {
+        font-family: 'Cinzel', serif; color: var(--verde-primario); font-size: 1.2rem;
+        margin-bottom: 10px; letter-spacing: 0.3px;
+    }
+    .texto-confirmar { font-size: 0.85rem; color: #555; line-height: 1.5; margin-bottom: 24px; }
+    .acciones-confirmar { display: flex; gap: 10px; }
+    .btn-cancelar-confirmar, .btn-confirmar-accion {
+        flex: 1; padding: 11px; border-radius: 4px; font-family: 'Montserrat', sans-serif;
+        font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; font-size: 0.75rem;
+        cursor: pointer; border: 1px solid; transition: background-color 0.2s ease, transform 0.15s ease;
+    }
+    .btn-cancelar-confirmar:active, .btn-confirmar-accion:active { transform: scale(0.96); }
+    .btn-cancelar-confirmar { background: var(--blanco); color: #666; border-color: var(--borde); }
+    .btn-cancelar-confirmar:hover { background: #f2f2f2; }
+    .btn-confirmar-accion { background: var(--verde-primario); color: var(--blanco); border-color: var(--dorado); }
+    .btn-confirmar-accion:hover { background: var(--verde-hover); }
+    .btn-confirmar-accion.btn-confirmar-peligro { background: #c62828; border-color: #8e0000; }
+    .btn-confirmar-accion.btn-confirmar-peligro:hover { background: #d32f2f; }
+
+    .modal-contenido h3 {
+        font-family: 'Cinzel', serif; margin-bottom: 20px; color: var(--verde-primario);
+        font-size: 1.3rem; letter-spacing: 0.5px;
+    }
+
+    .grupo-input { margin-bottom: 15px; }
+
+    .grupo-input label {
+        display: block; font-size: 0.75rem; margin-bottom: 6px; font-weight: 700;
+        color: var(--verde-primario); text-transform: uppercase; letter-spacing: 0.5px;
+    }
+
+    .grupo-input input, .grupo-input select, .grupo-input textarea {
+        width: 100%; padding: 10px; border: 1px solid var(--borde); border-radius: 4px;
+        font-family: 'Montserrat', sans-serif; font-size: 0.9rem;
+        transition: border-color 0.2s ease; background-color: var(--blanco);
+    }
+
+    .grupo-input textarea { resize: vertical; min-height: 90px; line-height: 1.4; }
+
+    .grupo-input input:focus, .grupo-input select:focus, .grupo-input textarea:focus { outline: none; border-color: var(--verde-primario); }
+
+    .grupo-switch-noticia {
+        display: flex; align-items: center; gap: 10px; margin-bottom: 18px;
+        background-color: var(--dorado-claro); border: 1px solid var(--dorado);
+        border-radius: 6px; padding: 10px 12px;
+    }
+    .grupo-switch-noticia input[type="checkbox"] {
+        width: 38px; height: 20px; accent-color: var(--verde-primario); cursor: pointer; flex-shrink: 0;
+    }
+    .grupo-switch-noticia label {
+        margin: 0; font-size: 0.78rem; font-weight: 700; color: var(--verde-primario);
+        text-transform: uppercase; letter-spacing: 0.4px; cursor: pointer;
+    }
+
+    .btn-crear-user, .btn-aplicar-hora {
+        width: 100%; background-color: var(--verde-primario); color: var(--blanco);
+        border: 1px solid var(--dorado); padding: 12px; font-family: 'Montserrat', sans-serif;
+        font-weight: 700; text-transform: uppercase; letter-spacing: 1px; border-radius: 4px;
+        cursor: pointer; margin-top: 10px; transition: background-color 0.2s ease, transform 0.15s ease;
+    }
+
+    .btn-aplicar-hora:hover { background-color: var(--verde-hover); }
+    .btn-aplicar-hora:active, .btn-crear-user:active { transform: scale(0.97); }
+
+    .btn-crear-user { background-color: var(--dorado); color: var(--verde-primario); border: 1px solid var(--verde-primario); }
+    .btn-crear-user:hover { background-color: #a88849; }
+
+    .btn-cerrar-modal {
+        position: absolute; top: 15px; right: 15px; background: none; border: none;
+        font-size: 1.5rem; cursor: pointer; color: #999; transition: color 0.2s ease, transform 0.3s ease;
+    }
+    .btn-cerrar-modal:hover { color: var(--verde-primario); transform: rotate(90deg); }
+
+    .error-mensaje, .exito-mensaje { font-size: 0.8rem; margin-top: 8px; display: none; font-weight: 600; }
+    .error-mensaje { color: #d32f2f; }
+    .exito-mensaje { color: #2e7d32; }
+
+    .nota-modal-hora { font-size: 0.78rem; color: #555; margin-bottom: 15px; line-height: 1.4; }
+
+    .separador-usuarios { border: none; border-top: 2px solid var(--dorado-claro); margin: 20px 0; }
+
+    .titulo-lista-usuarios {
+        font-family: 'Cinzel', serif; font-size: 1rem; color: var(--verde-primario);
+        margin-bottom: 12px; letter-spacing: 0.5px;
+    }
+
+    .tabla-usuarios { width: 100%; border-collapse: collapse; font-size: 0.82rem; margin-bottom: 10px; }
+
+    .tabla-usuarios th {
+        background-color: var(--verde-primario); color: var(--blanco);
+        text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.5px; padding: 8px 6px; text-align: left;
+    }
+
+    .tabla-usuarios td { padding: 6px; border-bottom: 1px solid var(--borde); vertical-align: middle; }
+
+    .select-rol { width: 100%; padding: 5px; border-radius: 4px; border: 1px solid var(--borde); font-size: 0.8rem; }
+
+    .btn-guardar-rol {
+        background-color: var(--verde-primario); color: var(--blanco); border: 1px solid var(--dorado);
+        padding: 5px 10px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+        border-radius: 4px; cursor: pointer; white-space: nowrap;
+    }
+    .btn-guardar-rol:hover { background-color: var(--verde-hover); }
+
+    .btn-eliminar-usuario {
+        background-color: #d32f2f; color: var(--blanco); border: 1px solid #b71c1c;
+        padding: 5px 10px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+        border-radius: 4px; cursor: pointer; white-space: nowrap;
+    }
+    .btn-eliminar-usuario:hover { background-color: #b71c1c; }
+
+    .btn-eliminar-usuario:disabled, .select-rol:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .input-password {
+        width: 130px; padding: 5px 6px; border-radius: 4px; border: 1px solid var(--borde); font-size: 0.8rem;
+    }
+
+    .tabla-contenedor-scroll { width: 100%; }
+
+    .tabla-salidas {
+        width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 0.82rem;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.02);
+    }
+
+    .tabla-salidas th {
+        background: linear-gradient(180deg, var(--verde-primario) 0%, #0d2a1e 100%);
+        color: var(--blanco); font-family: 'Montserrat', sans-serif; font-weight: 700;
+        text-transform: uppercase; padding: 12px 8px; border-bottom: 3px solid var(--dorado);
+        font-size: 0.72rem; letter-spacing: 1px; overflow-wrap: break-word;
+    }
+
+    .tabla-salidas td {
+        padding: 10px 8px; border-bottom: 1px solid var(--borde); color: #333333;
+        word-wrap: break-word; overflow-wrap: break-word;
+        transition: background-color 0.15s ease, border-color 0.15s ease;
+    }
+
+    .col-hoyo {
+        width: 5%; text-align: center; font-weight: 700;
+        background: linear-gradient(180deg, var(--dorado-claro) 0%, #ede4cd 100%) !important;
+        color: var(--verde-primario); border-right: 1px solid #e1d9c4;
+    }
+
+    .col-horario {
+        width: 7%; text-align: center; font-weight: 700; color: var(--verde-primario);
+        white-space: normal; word-break: keep-all; overflow-wrap: normal;
+    }
+
+    .col-jugador { width: 14%; font-weight: 400; }
+
+    .col-campo {
+        width: 8%; text-align: center; font-weight: 600;
+        text-transform: uppercase; font-size: 0.8rem; white-space: nowrap;
+    }
+
+    .col-detalles { width: 10%; text-align: center; color: #555; font-weight: 600; }
+
+    .tabla-salidas tr:nth-child(even) td:not(.col-hoyo) { background-color: #faf9f6; }
+    .tabla-salidas tr:hover td:not(.col-hoyo) { background-color: #f1ebd9 !important; }
+
+    /* -------------------------------------------------------------------
+       CELDAS EDITABLES
+       El valor real vive en un <span class="valor-editable"> dentro de la
+       celda; SOLO ese span recibe contenteditable="true", nunca el <td>.
+       Esto evita que el motor de edición del navegador (sobre todo en
+       Chrome/Samsung Internet para Android) reordene el layout de la celda
+       y pinte el texto encima de la etiqueta ::before en la vista móvil.
+       El span siempre ocupa el 100% del ancho de la celda (tanto en
+       escritorio como en móvil): sin esto, en pantallas grandes la caja
+       punteada de edición solo envolvía el ancho del texto, quedando
+       descentrada/angosta en vez de llenar la columna.
+       ------------------------------------------------------------------- */
+    .tabla-salidas td .valor-editable {
+        display: inline-block;
+        width: 100%;
+        min-height: 1.2em;
+        vertical-align: middle;
+    }
+    .tabla-salidas td .valor-editable[contenteditable="true"] {
+        background-color: var(--blanco) !important; border: 1.5px dashed var(--dorado) !important;
+        color: #000000 !important; outline: none; cursor: text;
+        padding: 2px 4px; border-radius: 3px; min-width: 24px;
+    }
+    .tabla-salidas td .valor-editable[contenteditable="true"]:focus {
+        background-color: var(--dorado-claro) !important; border: 1.5px solid var(--verde-primario) !important;
+        box-shadow: inset 0 0 5px rgba(17, 52, 38, 0.15);
+    }
+
+    .resultado-consulta { margin-top: 10px; }
+    .resultado-consulta h4 {
+        font-family: 'Cinzel', serif; color: var(--verde-primario); margin: 18px 0 8px;
+        font-size: 1rem; letter-spacing: 0.5px; border-bottom: 2px solid var(--dorado-claro); padding-bottom: 6px;
+    }
+    .tabla-consulta { width: 100%; border-collapse: collapse; font-size: 0.8rem; margin-bottom: 10px; }
+    .tabla-consulta th {
+        background-color: var(--verde-primario); color: var(--blanco); padding: 6px 5px;
+        text-transform: uppercase; font-size: 0.65rem; letter-spacing: 0.5px; text-align: left;
+    }
+    .tabla-consulta td { padding: 6px 5px; border-bottom: 1px solid var(--borde); }
+    .tabla-consulta tr:nth-child(even) { background-color: #faf9f6; }
+    .aviso-sin-datos-consulta { font-size: 0.85rem; color: #777; padding: 6px 0 14px; }
+
+    .acciones-consulta { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+    .acciones-consulta .btn-aplicar-hora { width: auto; flex: 1 1 auto; }
+    .btn-insertar-consulta { background-color: #8e24aa; }
+    .btn-insertar-consulta:hover { background-color: #9c27b0; }
+
+    /* =====================================================================
+       FOOTER DE NOTICIAS
+       Franja fija en la parte inferior de la ventana (no se mueve con el
+       scroll). Solo se muestra cuando está habilitada y tiene texto; el
+       body gana un padding-bottom mientras está visible para que el footer
+       no tape el final de las tablas.
+       ===================================================================== */
+    .footer-noticias {
+        display: none;
+        position: fixed; left: 0; right: 0; bottom: 0; z-index: 900;
+        background: linear-gradient(90deg, var(--verde-primario) 0%, #0d2a1e 100%);
+        border-top: 3px solid var(--dorado);
+        /* Sombra más ligera: una sombra grande + "position:fixed" es una
+           combinación pesada para el compositor de Samsung Internet/Tizen,
+           que la repinta en cada frame de scroll en vez de tratarla como una
+           capa aparte. */
+        box-shadow: 0 -3px 8px rgba(0,0,0,0.18);
+        padding: 10px 20px;
+        /* Fuerza que el navegador trate el footer como su propia capa GPU
+           (compositada una sola vez) en lugar de repintarlo junto con el
+           contenido que se desplaza detrás — esto es lo que corrige el lag
+           de scroll en la TV. */
+        will-change: transform;
+        transform: translateZ(0);
+    }
+    .footer-noticias.visible { display: block; }
+
+    /* =====================================================================
+       VIDEO DE CLIMA EN EL FOOTER
+       .footer-video-clima es un <video> de fondo (igual patrón que
+       .video-fondo-superior) cuyo src se cambia por JS según la categoría
+       de clima (soleado/nublado/niebla/llovizna/lluvioso/nieve/severo).
+       .overlay-video-footer oscurece un poco el video para que el texto de
+       la noticia y el reloj/clima sigan siendo legibles encima.
+       Cada categoría también pone un color de borde superior distinto,
+       como referencia rápida sin necesidad de fijarse en el video.
+       ===================================================================== */
+    .footer-noticias { overflow: hidden; }
+    .footer-video-clima {
+        position: absolute; inset: 0; width: 100%; height: 100%;
+        object-fit: cover; object-position: center; z-index: 0;
+        background-color: var(--verde-oscuro); /* fallback visible mientras carga o si falla */
+    }
+    .overlay-video-footer {
+        position: absolute; inset: 0; z-index: 1;
+        /* Antes esta capa era casi opaca (0.72-0.82) y por eso el video no se
+           veía: solo se notaba el verde plano de este degradado. Ahora es
+           mucho más sutil, solo para dar contraste en los extremos donde
+           está el texto/ícono, dejando el video visible en el centro. */
+        background: linear-gradient(90deg, rgba(9,26,19,0.55) 0%, rgba(13,30,22,0.15) 30%, rgba(13,30,22,0.15) 70%, rgba(9,26,19,0.55) 100%);
+    }
+    .footer-noticias-contenido { position: relative; z-index: 2; }
+    .footer-noticias-texto,
+    .footer-noticias-icono,
+    .clima-icono, .clima-temp {
+        text-shadow: 0 1px 4px rgba(0,0,0,0.85);
+    }
+
+    .footer-noticias.footer-clima-soleado   { border-top-color: var(--dorado-brillante); }
+    .footer-noticias.footer-clima-nublado   { border-top-color: #9aa5ab; }
+    .footer-noticias.footer-clima-niebla    { border-top-color: #c9d1d3; }
+    .footer-noticias.footer-clima-llovizna  { border-top-color: #7fb8e0; }
+    .footer-noticias.footer-clima-lluvioso  { border-top-color: #4a90d9; }
+    .footer-noticias.footer-clima-nieve     { border-top-color: #e8f1f5; }
+
+    /* --- SEVERO: además del video, refuerzo agresivo de alerta --- */
+    .footer-noticias.footer-clima-severo {
+        border-top: 5px solid #ff1744;
+        animation: pulsoFondoSevero 0.9s ease-in-out infinite;
+    }
+    .footer-noticias.footer-clima-severo .overlay-video-footer {
+        background: linear-gradient(90deg, rgba(122,31,31,0.55) 0%, rgba(67,0,0,0.5) 55%, rgba(122,31,31,0.55) 100%);
+        animation: parpadeoOverlaySevero 0.9s ease-in-out infinite;
+    }
+    .footer-noticias.footer-clima-severo::before {
+        content: '';
+        position: absolute; inset: 0; z-index: 1;
+        background-image: repeating-linear-gradient(
+            45deg,
+            rgba(255,255,255,0.14) 0 10px,
+            rgba(255,0,0,0.28) 10px 20px
+        );
+        background-size: 200% 200%;
+        animation: moverRayasSevero 0.6s linear infinite;
+        pointer-events: none;
+    }
+    .footer-noticias.footer-clima-severo .footer-noticias-icono {
+        font-size: 1.3rem;
+        animation: sacudirIconoSevero 0.35s ease-in-out infinite;
+    }
+    .footer-noticias.footer-clima-severo .footer-noticias-texto {
+        font-weight: 800;
+        letter-spacing: 0.3px;
+        animation: parpadeoTextoSevero 0.9s ease-in-out infinite;
+    }
+    @keyframes pulsoFondoSevero {
+        0%, 100% { box-shadow: 0 -3px 10px rgba(0,0,0,0.2); }
+        50%      { box-shadow: 0 -6px 30px rgba(255,23,68,0.85); }
+    }
+    @keyframes parpadeoOverlaySevero {
+        0%, 100% { opacity: 0.7; }
+        50%      { opacity: 1; }
+    }
+    @keyframes moverRayasSevero {
+        from { background-position: 0 0; }
+        to   { background-position: 56px 0; }
+    }
+    @keyframes sacudirIconoSevero {
+        0%, 100% { transform: rotate(0deg) scale(1); }
+        25%      { transform: rotate(-18deg) scale(1.15); }
+        75%      { transform: rotate(18deg) scale(1.15); }
+    }
+    @keyframes parpadeoTextoSevero {
+        0%, 100% { color: var(--dorado-claro); }
+        50%      { color: #ffffff; }
+    }
+
+    /* =====================================================================
+       ALERTA DE PANTALLA COMPLETA PARA CLIMA SEVERO
+       Además del footer, se agrega un marco pulsante alrededor de TODA la
+       pantalla (body.alerta-clima-severo, activado por JS) para que la
+       alerta sea imposible de pasar por alto aunque el usuario no esté
+       viendo el footer en ese momento. pointer-events:none para que nunca
+       bloquee clics/edición.
+       ===================================================================== */
+    body.alerta-clima-severo::after {
+        content: '';
+        position: fixed; inset: 0; z-index: 950;
+        pointer-events: none;
+        border: 6px solid #ff1744;
+        box-shadow: inset 0 0 40px rgba(255,23,68,0.55), 0 0 25px rgba(255,23,68,0.5);
+        animation: parpadeoMarcoSevero 1s ease-in-out infinite;
+    }
+    @keyframes parpadeoMarcoSevero {
+        0%, 100% { opacity: 0.35; }
+        50%      { opacity: 1; }
+    }
+
+    /* En modo kiosco/TV la alerta debe ser aún más imposible de ignorar:
+       marco más grueso, pulso más rápido y footer más grande. */
+    html.modo-kiosco body.alerta-clima-severo::after {
+        border-width: 12px;
+        box-shadow: inset 0 0 70px rgba(255,23,68,0.7), 0 0 45px rgba(255,23,68,0.65);
+        animation-duration: 0.6s;
+    }
+    html.modo-kiosco .footer-noticias.footer-clima-severo {
+        padding-top: 16px; padding-bottom: 16px;
+    }
+    html.modo-kiosco .footer-noticias.footer-clima-severo .footer-noticias-texto {
+        font-size: 1.15rem;
+    }
+    html.modo-kiosco .footer-noticias.footer-clima-severo .footer-noticias-icono {
+        font-size: 1.7rem;
+    }
+
+    .footer-noticias-contenido {
+        max-width: 1400px; margin: 0 auto;
+        display: flex; align-items: center; gap: 12px;
+    }
+    .footer-noticias-icono {
+        flex-shrink: 0; font-size: 1.05rem;
+        background-color: var(--dorado); color: var(--verde-primario);
+        width: 26px; height: 26px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .footer-noticias-texto {
+        margin: 0; color: var(--dorado-claro); font-size: 0.82rem;
+        line-height: 1.4; white-space: pre-line;
+    }
+
+    /* Esquina de clima dentro del footer de noticias: se separa a la derecha
+       con margin-left:auto, con una línea sutil que la distingue del texto. */
+    .footer-noticias-clima {
+        margin-left: auto; flex-shrink: 0;
+        display: flex; align-items: center; gap: 8px;
+        padding-left: 16px; border-left: 1px solid rgba(244, 239, 226, 0.28);
+        color: var(--dorado-claro); white-space: nowrap;
+    }
+    .clima-icono { font-size: 1.1rem; line-height: 1; }
+    .clima-temp { font-weight: 700; font-size: 0.88rem; letter-spacing: 0.3px; }
+    .clima-ciudad-corta { font-size: 0.68rem; opacity: 0.75; text-transform: uppercase; letter-spacing: 0.4px; display: none; }
+
+    body.con-footer-noticias { padding-bottom: 62px; }
+
+    @media (max-width: 768px) {
+        .footer-noticias { padding: 8px 14px; }
+        .footer-noticias-texto { font-size: 0.75rem; }
+        .footer-noticias-clima { padding-left: 10px; gap: 6px; }
+        .clima-temp { font-size: 0.8rem; }
+        body.con-footer-noticias { padding-bottom: 74px; }
+    }
+
+    @media (min-width: 1600px) {
+        html, body { height: 100%; }
+        body {
+            width: 100vw; min-height: 100vh; overflow-y: auto; overflow-x: hidden;
+            padding: 1.4vh 1.6vw; display: flex; flex-direction: column;
+        }
+        .barra-global-admin { flex: 0 0 auto; margin-bottom: 1.2vh; }
+        .contenedor-doble { max-width: 100%; flex: 1 1 auto; min-height: 0; gap: 1.6vw; }
+        .pantalla-contenedor { flex: 1 1 0; max-width: none; display: flex; flex-direction: column; min-height: 0; padding: 2vh 1.8vw; }
+        .zona-superior-imagen { flex: 0 0 auto; margin: -2vh -1.8vw 1.8vh -1.8vw; padding: 1.4vh 1.8vw 0 1.8vw; }
+        .barra-reloj { margin-bottom: 1.4vh; }
+        .reloj-digital { font-size: 1.5rem; padding: 10px 30px; letter-spacing: 2px; }
+        .logo-club-img { width: 100%; height: 160px; }
+        .encabezado { padding-bottom: 2vh; margin-bottom: 2vh; }
+        .fecha-central { font-size: 2.6rem; }
+        .texto-info h2 { font-size: 1.8rem; }
+        .texto-info p { font-size: 1.05rem; }
+        .btn-guardar, .btn-usuarios, .btn-config-hora, .btn-vaciado, .btn-consultar, .btn-noticias { font-size: 1rem; padding: 13px 24px; }
+        .usuario-logeado { font-size: 1.05rem; padding: 10px 20px; }
+        .tabla-contenedor-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-anchor: none; }
+        .tabla-salidas { font-size: 1.25rem; }
+        .tabla-salidas th { font-size: 1rem; padding: 20px 14px; }
+        .tabla-salidas td { padding: 16px 14px; }
+        .footer-noticias-texto { font-size: 1.05rem; }
+        .clima-temp { font-size: 1.15rem; }
+        .clima-icono { font-size: 1.5rem; }
+        body.con-footer-noticias { padding-bottom: 5.5vh; }
+    }
+
+    @media (max-width: 1400px) { .pantalla-contenedor { flex: 1 1 100%; max-width: 900px; } }
+
+    @media (max-width: 1024px) {
+        body { padding: 10px; }
+        .encabezado { flex-direction: column; gap: 20px; text-align: center; padding-bottom: 20px; }
+        .logo-club, .bloque-derecho { justify-content: center; align-items: center; text-align: center; width: 100%; }
+        .admin-actions { justify-content: center; }
+        .fecha-central { font-size: 1.6rem; order: -1; }
+        .barra-global-admin { justify-content: center; }
+    }
+
+    @media (max-width: 768px) {
+        .pantalla-contenedor { padding: 20px 15px; border-width: 2px; border-top-width: 8px; }
+        .fecha-central { font-size: 1.3rem; }
+        .texto-info h2 { font-size: 1.2rem; }
+        .tabla-salidas, .tabla-salidas thead, .tabla-salidas tbody, .tabla-salidas th, .tabla-salidas td, .tabla-salidas tr { display: block; }
+        .tabla-salidas thead tr { position: absolute; top: -9999px; left: -9999px; }
+        .tabla-salidas tr {
+            background: #ffffff; border: 1px solid var(--borde); border-radius: 8px;
+            margin-bottom: 15px; padding: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); overflow: hidden;
+        }
+        .tabla-salidas tr:nth-child(even) td:not(.col-hoyo) { background-color: transparent; }
+        /* IMPORTANTE: ya NO se usa display:flex aquí. Con contenteditable
+           activo, algunos navegadores móviles (Chrome/Samsung Internet en
+           Android) reflowean el contenido de un flex-item editable de forma
+           distinta al resto, ignorando el padding-left reservado para la
+           etiqueta y pintando el valor encima de ella. Con "block" + el
+           span interno ".valor-editable" el layout es estable siempre. */
+        .tabla-salidas td {
+            border: none; border-bottom: 1px solid #f0f0f0; position: relative;
+            padding: 10px 12px 10px 45% !important; text-align: left !important; min-height: 40px;
+            display: block;
+        }
+        .tabla-salidas td .valor-editable {
+            display: inline-block; width: 100%; vertical-align: middle; word-break: break-word;
+        }
+        .tabla-salidas td:last-child { border-bottom: none; }
+        .tabla-salidas td::before {
+            position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+            width: 40%; padding-right: 10px; white-space: nowrap;
+            font-weight: 700; color: var(--verde-primario); font-size: 0.75rem;
+            text-transform: uppercase; content: attr(data-label);
+        }
+        .col-hoyo { background-color: var(--verde-primario) !important; color: var(--dorado) !important; border-radius: 4px 4px 0 0; }
+        .col-hoyo::before { color: var(--dorado) !important; }
+        .tabla-salidas td .valor-editable[contenteditable="true"] { margin: 4px 0; border-radius: 4px; }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- =====================================================================
+       PANTALLA DE LOGIN GLOBAL (GATE DE ACCESO)
+       Cubre todo el sitio hasta que haya una sesión válida. En modo kiosco
+       queda oculta siempre por CSS (html.modo-kiosco .pantalla-login-global).
+       ===================================================================== -->
+  <div class="pantalla-login-global" id="pantallaLoginGlobal">
+      <video class="video-lock-bg" id="videoLock" autoplay muted loop playsinline poster="img/campo.jpg">
+          <source src="lock.mp4" type="video/mp4">
+          <source src="img/lock.mp4" type="video/mp4">
+      </video>
+      <div class="overlay-lock-bg"></div>
+
+      <div class="tarjeta-login-global" id="tarjetaLogin">
+          <div class="panel-form-global">
+              <div class="header-login-form">
+                  <div class="marca-login-form">
+                      <img src="img/Logo1.png" alt="Logo Club de Golf San Carlos" onerror="this.src='img/icon.png'">
+                      <span>Club de Golf<br>San Carlos</span>
+                  </div>
+                  <h2>Iniciar Sesión</h2>
+                  <p>Ingresa tus credenciales para acceder a la bitácora de salidas.</p>
+              </div>
+
+              <form id="formularioLoginGlobal">
+                  <div class="grupo-campo-lock">
+                      <label for="txtUsuarioGlobal">Usuario</label>
+                      <div class="input-envoltorio-lock">
+                          <!-- Se quitó el atributo "autofocus" nativo: dispara su propio
+                               scrollIntoView interno del navegador (que no respeta bien
+                               un contenedor position:fixed, sobre todo en navegadores de
+                               TV). El foco ahora se hace por JS en mostrarLoginGate()
+                               con { preventScroll: true }. -->
+                          <input type="text" id="txtUsuarioGlobal" required placeholder="Nombre de usuario" autocomplete="username">
+                          <span class="icono-lock-input">👤</span>
+                      </div>
+                  </div>
+
+                  <div class="grupo-campo-lock">
+                      <label for="txtPasswordGlobal">Contraseña</label>
+                      <div class="input-envoltorio-lock">
+                          <input type="password" id="txtPasswordGlobal" required placeholder="••••••••" autocomplete="current-password">
+                          <span class="icono-lock-input">🔒</span>
+                      </div>
+                  </div>
+
+                  <p class="error-mensaje" id="msgErrorGlobal"></p>
+
+                  <button type="submit" class="btn-acceder-global" id="btnAccederGlobal">Acceder al Sistema</button>
+              </form>
+
+              <div class="pie-login-seguridad">
+                  🔒 Conexión Segura • Exclusivo para personal del Club
+              </div>
+
+              <!-- Enlace de descubrimiento hacia el portal de socios: este gate es
+                   solo para el personal (staff); los socios que lleguen aquí por
+                   error tienen su propia app en portal-socios.html. -->
+              <a class="enlace-portal-socios" href="portal-socios.html">
+                  ⛳ ¿Eres socio del club? Entra a tu Portal de Reservas
+              </a>
+          </div>
+
+          <div class="panel-visual-global">
+              <div></div>
+              <div class="tarjeta-visual-insignia">
+                  <img src="img/Logo1.png" alt="Escudo San Carlos" onerror="this.src='img/icon.png'">
+                  <h3>Tee Times & Salidas</h3>
+                  <p>Metepec, México • 1971</p>
+              </div>
+              <div class="pie-panel-visual">
+                  Club de Golf San Carlos S.A. de C.V.
+              </div>
+               <div class="pie-panel-visual">
+                  Kevin
+              </div>
+          </div>
+      </div>
+  </div>
+
+  <!-- Acentos decorativos de naturaleza (solo visibles en pantallas muy anchas) -->
+  <div class="acento-lateral acento-lateral-izq" aria-hidden="true"></div>
+  <div class="acento-lateral acento-lateral-der" aria-hidden="true"></div>
+
+  <button type="button" class="btn-pantalla-completa" id="btnPantallaCompleta">⛶ Pantalla Completa</button>
+
+  <main class="aplicacion-principal" id="appPrincipal">
+
+  <div class="barra-global-admin">
+      <button class="btn-noticias" id="btnAbrirNoticias">📰 Noticias</button>
+      <button class="btn-historial" id="btnAbrirHistorial">🕘 Historial</button>
+      <button class="btn-consultar" id="btnAbrirConsultar">🔎 Consultar Jugadores</button>
+      <button class="btn-usuarios" id="btnAbrirUsuarios">👥 Usuarios</button>
+      <button class="btn-socios" id="btnAbrirSocios">👤 Guardar Socio</button>
+      <span class="usuario-logeado" id="badgeUsuario" title="Click para Cerrar Sesión">🛠️ Admin: Kevin (Salir)</span>
+  </div>
+
+  <div class="contenedor-doble">
+
+    <!-- ======================  TABLA 1 (HOY)  ============ -->
+    <div class="pantalla-contenedor" data-tabla="1">
+        <div class="zona-superior-imagen">
+            <video class="video-fondo-superior" autoplay muted loop playsinline poster="img/Logo.png" aria-label="Logo Oficial Club de Golf San Carlos">
+                <source src="img/Logo.mp4" type="video/mp4">
+            </video>
+            <div class="overlay-fondo-superior"></div>
+            <div class="fila-exportar">
+                <button type="button" class="btn-exportar" data-tabla="1" data-formato="pdf">📄 PDF</button>
+                <button type="button" class="btn-exportar" data-tabla="1" data-formato="excel">📊 Excel</button>
+            </div>
+            <div class="barra-reloj"><span class="reloj-digital" id="relojSuperior1">--:-- --</span></div>
+            <header class="encabezado">
+                <div class="espacio-marca" style="flex:1;"></div>
+                <h1 class="fecha-central" id="fechaCentral1">Cargando fecha...</h1>
+                <div class="bloque-derecho">
+                    <div class="texto-info"><h2>SALIDAS DE HOY</h2><p>Today's Tee Times</p></div>
+                    <div class="admin-actions">
+                        <button class="btn-config-hora" data-tabla="1" id="btnConfigHora1">🕒 Config. Fecha/Hora</button>
+                        <button class="btn-guardar" data-tabla="1" id="btnGuardarCambios1">💾 Guardar</button>
+                        <span class="indicador-autoguardado" id="autoguardado1"></span>
+                        <button class="btn-vaciado" data-tabla="1" id="btnVaciado1">🗑️ Vaciado</button>
+                    </div>
+                </div>
+            </header>
+        </div>
+        <div class="tabla-contenedor-scroll">
+        <table class="tabla-salidas" id="tablaDatosGolf1">
+            <colgroup>
+                <col style="width: 5%;"><col style="width: 7%;"><col style="width: 14%;">
+                <col style="width: 14%;"><col style="width: 14%;"><col style="width: 14%;">
+                <col style="width: 14%;"><col style="width: 8%;"><col style="width: 10%;">
+            </colgroup>
+            <thead>
+                <tr>
+                    <th style="text-align: center;">Hoyo</th>
+                    <th style="text-align: center;">Horario</th>
+                    <th>Jugador 1</th><th>Jugador 2</th><th>Jugador 3</th><th>Jugador 4</th><th>Jugador 5</th>
+                    <th style="text-align: center;">Campo</th>
+                    <th style="text-align: center;">Detalles</th>
+                </tr>
+            </thead>
+            <tbody id="cuerpoTablaGolf1">
+                <tr><td colspan="9" style="text-align:center; padding: 20px;">Cargando salidas...</td></tr>
+            </tbody>
+        </table>
+        </div>
+    </div>
+
+    <!-- ======================  TABLA 2 (MAÑANA)  ============ -->
+    <div class="pantalla-contenedor" data-tabla="2">
+        <div class="zona-superior-imagen">
+            <video class="video-fondo-superior" autoplay muted loop playsinline poster="img/Logo.png" aria-label="Logo Oficial Club de Golf San Carlos">
+                <source src="img/Logo.mp4" type="video/mp4">
+            </video>
+            <div class="overlay-fondo-superior"></div>
+            <div class="fila-exportar">
+                <button type="button" class="btn-exportar" data-tabla="2" data-formato="pdf">📄 PDF</button>
+                <button type="button" class="btn-exportar" data-tabla="2" data-formato="excel">📊 Excel</button>
+            </div>
+            <div class="barra-reloj"><span class="reloj-digital" id="relojSuperior2">--:-- --</span></div>
+            <header class="encabezado">
+                <div class="espacio-marca" style="flex:1;"></div>
+                <h1 class="fecha-central" id="fechaCentral2">Cargando fecha...</h1>
+                <div class="bloque-derecho">
+                    <div class="texto-info"><h2>SALIDAS DE HOY</h2><p>Today's Tee Times</p></div>
+                    <div class="admin-actions">
+                        <button class="btn-config-hora" data-tabla="2" id="btnConfigHora2">🕒 Config. Fecha/Hora</button>
+                        <button class="btn-guardar" data-tabla="2" id="btnGuardarCambios2">💾 Guardar</button>
+                        <span class="indicador-autoguardado" id="autoguardado2"></span>
+                        <button class="btn-vaciado" data-tabla="2" id="btnVaciado2">🗑️ Vaciado</button>
+                    </div>
+                </div>
+            </header>
+        </div>
+        <div class="tabla-contenedor-scroll">
+        <table class="tabla-salidas" id="tablaDatosGolf2">
+            <colgroup>
+                <col style="width: 5%;"><col style="width: 7%;"><col style="width: 14%;">
+                <col style="width: 14%;"><col style="width: 14%;"><col style="width: 14%;">
+                <col style="width: 14%;"><col style="width: 8%;"><col style="width: 10%;">
+            </colgroup>
+            <thead>
+                <tr>
+                    <th style="text-align: center;">Hoyo</th>
+                    <th style="text-align: center;">Horario</th>
+                    <th>Jugador 1</th><th>Jugador 2</th><th>Jugador 3</th><th>Jugador 4</th><th>Jugador 5</th>
+                    <th style="text-align: center;">Campo</th>
+                    <th style="text-align: center;">Detalles</th>
+                </tr>
+            </thead>
+            <tbody id="cuerpoTablaGolf2">
+                <tr><td colspan="9" style="text-align:center; padding: 20px;">Cargando salidas...</td></tr>
+            </tbody>
+        </table>
+        </div>
+    </div>
+
+  </div>
+
+  <!-- Footer fijo de noticias: no se mueve con el scroll, solo aparece si está habilitado -->
+  <footer class="footer-noticias" id="footerNoticias">
+      <video class="footer-video-clima" id="videoClimaFooter" autoplay muted loop playsinline></video>
+      <div class="overlay-video-footer"></div>
+      <div class="footer-noticias-contenido">
+          <span class="footer-noticias-icono" aria-hidden="true">📰</span>
+          <p class="footer-noticias-texto" id="footerNoticiasTexto"></p>
+          <div class="footer-noticias-clima" id="footerNoticiasClima" title="">
+              <span class="clima-icono" id="climaIcono">🌤️</span>
+              <span class="clima-temp" id="climaTemp">--°C</span>
+          </div>
+      </div>
+  </footer>
+
+  </main><!-- /.aplicacion-principal -->
+
+  <!-- Modal Registro y Administración de Usuarios -->
+  <div class="modal-usuarios" id="modalUsuarios">
+      <div class="modal-contenido modal-contenido-usuarios">
+          <button class="btn-cerrar-modal" id="btnCerrarUsuarios">&times;</button>
+          <h3>Registrar Nuevo Operador</h3>
+          <form id="formularioRegistro">
+              <div class="grupo-input">
+                  <label for="txtNuevoUsuario">Nombre de Usuario</label>
+                  <input type="text" id="txtNuevoUsuario" required placeholder="Ej. juan_sancarlos">
+              </div>
+              <div class="grupo-input">
+                  <label for="txtNuevaPassword">Contraseña</label>
+                  <input type="password" id="txtNuevaPassword" required placeholder="••••">
+              </div>
+              <div class="grupo-input">
+                  <label for="selNuevoRolUsuario">Rol</label>
+                  <select id="selNuevoRolUsuario">
+                      <option value="operator">Usuario</option>
+                      <option value="admin">Administrador</option>
+                      <option value="viewer">Visualizador</option>
+                  </select>
+              </div>
+              <p class="error-mensaje" id="msgErrorRegistro">El usuario ya existe.</p>
+              <p class="exito-mensaje" id="msgExitoRegistro">¡Usuario registrado correctamente!</p>
+              <button type="submit" class="btn-crear-user">Autorizar y Registrar</button>
+          </form>
+
+          <hr class="separador-usuarios">
+
+          <h4 class="titulo-lista-usuarios">Usuarios Registrados y Permisos</h4>
+          <p class="nota-modal-hora">Por seguridad, las contraseñas ya no se pueden ver: solo puedes asignar una <strong>nueva</strong> contraseña.</p>
+          <div id="listaUsuariosRegistrados"><!-- Se llena dinámicamente --></div>
+      </div>
+  </div>
+
+  <!-- Modal de Configuración Manual de Fecha/Hora -->
+  <div class="modal-hora" id="modalHora">
+      <div class="modal-contenido">
+          <button class="btn-cerrar-modal" id="btnCerrarHora">&times;</button>
+          <h3 id="tituloModalHora">Configurar Fecha y Hora</h3>
+          <p class="nota-modal-hora">Define manualmente la fecha y hora de esta tabla. A partir de este ajuste, el reloj y las columnas de "Detalles" seguirán funcionando de forma automática sin necesidad de volver a configurarlos.</p>
+          <form id="formularioHora">
+              <div class="grupo-input">
+                  <label for="inputFechaManual">Fecha</label>
+                  <input type="date" id="inputFechaManual" required>
+              </div>
+              <div class="grupo-input">
+                  <label for="inputHoraManual">Hora</label>
+                  <input type="time" id="inputHoraManual" required>
+              </div>
+              <button type="submit" class="btn-aplicar-hora">Aplicar y Sincronizar</button>
+          </form>
+      </div>
+  </div>
+
+  <!-- Modal Consultar Jugadores por Fecha -->
+  <div class="modal-consultar" id="modalConsultar">
+      <div class="modal-contenido modal-contenido-consultar">
+          <button class="btn-cerrar-modal" id="btnCerrarConsultar">&times;</button>
+          <h3>Consultar Jugadores por Fecha</h3>
+          <p class="nota-modal-hora">Elige una fecha para ver los jugadores registrados ese día en ambas tablas. Esta vista es solo de consulta, no se puede editar aquí. Con "Insertar" puedes además recuperar esos datos hacia la Tabla 1 o 2 actual, sin importar qué día sea.</p>
+          <div class="grupo-input">
+              <label for="inputFechaConsulta">Fecha</label>
+              <input type="date" id="inputFechaConsulta">
+          </div>
+          <div class="acciones-consulta">
+              <button type="button" class="btn-aplicar-hora" id="btnBuscarConsulta">Buscar</button>
+              <button type="button" class="btn-aplicar-hora btn-insertar-consulta" id="btnInsertarJugadores">📥 Insertar</button>
+          </div>
+          <div class="resultado-consulta" id="resultadoConsulta"></div>
+      </div>
+  </div>
+
+  <!-- Modal Historial de Cambios -->
+  <div class="modal-consultar" id="modalHistorial">
+      <div class="modal-contenido modal-contenido-historial">
+          <button class="btn-cerrar-modal" id="btnCerrarHistorial">&times;</button>
+          <h3>Historial de Cambios</h3>
+          <p class="nota-modal-hora">Registro de quién cambió qué y cuándo. Solo se registran cambios reales (no cada autoguardado). Filtra por fecha y/o tabla; déjalos vacíos para ver los más recientes de ambas tablas y fechas.</p>
+          <div class="fila-filtros-historial">
+              <div class="grupo-input">
+                  <label for="inputFechaHistorial">Fecha</label>
+                  <input type="date" id="inputFechaHistorial">
+              </div>
+              <div class="grupo-input">
+                  <label for="selTablaHistorial">Tabla</label>
+                  <select id="selTablaHistorial">
+                      <option value="">Ambas</option>
+                      <option value="1">Tabla 1</option>
+                      <option value="2">Tabla 2</option>
+                  </select>
+              </div>
+              <button type="button" class="btn-aplicar-hora" id="btnBuscarHistorial">Buscar</button>
+          </div>
+          <div class="contenedor-tabla-historial" id="resultadoHistorial"></div>
+      </div>
+  </div>
+
+  <!-- Modal Guardar Socio (captura masiva + autocompletado en las tablas) -->
+  <div class="modal-consultar" id="modalSocios">
+      <div class="modal-contenido modal-contenido-historial">
+          <button class="btn-cerrar-modal" id="btnCerrarSocios">&times;</button>
+          <h3>👤 Guardar Socios</h3>
+          <p class="nota-modal-hora">Cada socio se guarda exactamente como lo escribas aquí. Nombre y al menos un apellido son obligatorios; el segundo nombre es opcional. Una vez guardados, aparecerán como sugerencia al escribir su nombre en las celdas de Jugador de las tablas de salidas.</p>
+
+          <div id="filasNuevosSocios"><!-- filas dinámicas --></div>
+
+          <div class="acciones-consulta">
+              <button type="button" class="btn-aplicar-hora" id="btnAgregarFilaSocio" style="width:auto;">➕ Agregar fila</button>
+              <button type="button" class="btn-aplicar-hora" id="btnGuardarSocios" style="width:auto; background-color:#2e7d32; border-color:#1b5e20;">💾 Guardar Socios</button>
+          </div>
+          <p class="error-mensaje" id="msgErrorSocios"></p>
+          <p class="exito-mensaje" id="msgExitoSocios"></p>
+
+          <hr class="separador-usuarios">
+
+          <h4 class="titulo-lista-usuarios">Socios registrados</h4>
+          <div class="grupo-input">
+              <input type="text" id="txtFiltrarSocios" placeholder="Filtrar por nombre...">
+          </div>
+          <div class="contenedor-tabla-historial" id="listaSociosRegistrados"><!-- se llena dinámicamente --></div>
+      </div>
+  </div>
+
+  <!-- Modal Noticias (footer dinámico) -->
+  <div class="modal-noticias" id="modalNoticias">
+      <div class="modal-contenido modal-contenido-noticias">
+          <button class="btn-cerrar-modal" id="btnCerrarNoticias">&times;</button>
+          <h3>📰 Noticias del Pie de Página</h3>
+          <p class="nota-modal-hora">Este mensaje aparecerá fijo al final de la pantalla, en ambas tablas, sin importar el scroll. Actívalo para publicarlo; desactívalo para quitarlo sin perder el texto guardado.</p>
+          <div class="grupo-switch-noticia">
+              <input type="checkbox" id="chkNoticiaActiva">
+              <label for="chkNoticiaActiva">Mostrar footer a todos</label>
+          </div>
+          <form id="formularioNoticia">
+              <div class="grupo-input">
+                  <label for="txtNoticiaContenido">Contenido</label>
+                  <textarea id="txtNoticiaContenido" maxlength="500" placeholder="Ej. El próximo lunes el club permanecerá cerrado por mantenimiento de campo."></textarea>
+              </div>
+
+              <hr class="separador-usuarios">
+
+              <h4 class="titulo-lista-usuarios">🌤️ Clima en la esquina del footer</h4>
+              <p class="nota-modal-hora">Elige la ciudad que se mostrará junto a la noticia. Por defecto: San Francisco Coaxusco, Metepec, México.</p>
+              <div class="grupo-input">
+                  <label for="txtClimaCiudad">Ciudad</label>
+                  <input type="text" id="txtClimaCiudad" placeholder="Ej. Metepec, México">
+              </div>
+              <div class="acciones-consulta">
+                  <button type="button" class="btn-aplicar-hora" id="btnBuscarClima" style="width:auto;">🔎 Buscar ubicación</button>
+              </div>
+              <div id="resultadosClimaBusqueda"></div>
+
+              <p class="error-mensaje" id="msgErrorNoticia"></p>
+              <p class="exito-mensaje" id="msgExitoNoticia">¡Noticia guardada correctamente!</p>
+              <button type="submit" class="btn-aplicar-hora" id="btnGuardarNoticia">Guardar y Publicar</button>
+          </form>
+      </div>
+  </div>
+
+  <!-- Modal de Confirmación (reemplaza el confirm() nativo del navegador en
+       todas las acciones sensibles del sitio: cerrar sesión, vaciar tabla,
+       eliminar usuario/socio, sobrescribir jugadores) -->
+  <div class="modal-confirmar" id="modalConfirmar">
+      <div class="modal-contenido modal-contenido-confirmar">
+          <div class="icono-confirmar" id="iconoConfirmar">⚠️</div>
+          <h3 id="tituloConfirmar">¿Estás seguro?</h3>
+          <p class="texto-confirmar" id="textoConfirmar"></p>
+          <div class="acciones-confirmar">
+              <button type="button" class="btn-cancelar-confirmar" id="btnCancelarConfirmar">Cancelar</button>
+              <button type="button" class="btn-confirmar-accion" id="btnConfirmarAccion">Confirmar</button>
+          </div>
+      </div>
+  </div>
+
+  <script>
+      // =========================================================================================
+      // CORRECCIÓN DE SCROLL HEREDADO
+      // Evita que el navegador restaure automáticamente una posición de scroll
+      // guardada de una carga anterior de la página (algunos navegadores, sobre
+      // todo en Android/TV, lo hacen por defecto en recargas o al volver de un
+      // teclado virtual). Con 'manual' controlamos nosotros el scroll siempre
+      // desde mostrarLoginGate()/ocultarLoginGate().
+      // =========================================================================================
+      if ('scrollRestoration' in history) {
+          history.scrollRestoration = 'manual';
+      }
+
+      // =========================================================================
+      // Reset inicial de scroll.
+      //
+      // Las tablas usan .tabla-contenedor-scroll como scroll real en escritorio.
+      // Lo ponemos arriba SOLO durante la inicialización/carga de datos.
+      // Después de esto el usuario conserva control total y puede bajar hasta
+      // cualquier fila (18, 40, etc.).
+      // =========================================================================
+      function resetearScrollSoloAlCargar() {
+          window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+          document.documentElement.scrollTop = 0;
+          document.body.scrollTop = 0;
+
+          document.querySelectorAll('.tabla-contenedor-scroll').forEach(contenedor => {
+              contenedor.scrollTop = 0;
+              contenedor.scrollLeft = 0;
+          });
+      }
+
+      // cargarSalidas() se llama UNA vez al iniciar la página y luego cada
+      // 2s para siempre por el auto-refresco (autoRefrescarSalidas). Esta
+      // bandera asegura que el reseteo de scroll de más abajo (pensado solo
+      // para la carga inicial, cuando la tabla recién toma su altura real)
+      // no se repita en cada auto-refresco: si no, le arrebataría el scroll
+      // al usuario cada 2 segundos mientras está viendo o editando la tabla
+      // (el salto errático que se ve en el video).
+      let cargaInicialSalidasCompleta = false;
+
+      // Corrige una posible restauración ocurrida al terminar el primer pintado.
+      document.addEventListener('DOMContentLoaded', () => {
+          resetearScrollSoloAlCargar();
+          requestAnimationFrame(resetearScrollSoloAlCargar);
+          setTimeout(resetearScrollSoloAlCargar, 100);
+          setTimeout(resetearScrollSoloAlCargar, 300);
+      }, { once: true });
+
+      // =========================================================================================
+      // CONFIGURACIÓN DE LA API
+      // =========================================================================================
+      const API_BASE = ''; // Los .php están en la misma carpeta que index.html
+
+      // Usa la fecha LOCAL del navegador (no UTC), para que no se desfase un día
+      // entre medianoche y el amanecer respecto al calendario real del usuario.
+      function obtenerFechaLocalISO() {
+          const ahora = new Date();
+          const yyyy = ahora.getFullYear();
+          const mm = String(ahora.getMonth() + 1).padStart(2, '0');
+          const dd = String(ahora.getDate()).padStart(2, '0');
+          return `${yyyy}-${mm}-${dd}`;
+      }
+
+      // Suma/resta días a una fecha ISO (YYYY-MM-DD) sin líos de zona horaria,
+      // construyendo la fecha con año/mes/día explícitos (hora local, no UTC).
+      function sumarDiasISO(fechaISO, dias) {
+          const [anio, mes, dia] = fechaISO.split('-').map(Number);
+          const fecha = new Date(anio, mes - 1, dia);
+          fecha.setDate(fecha.getDate() + dias);
+          const yyyy = fecha.getFullYear();
+          const mm = String(fecha.getMonth() + 1).padStart(2, '0');
+          const dd = String(fecha.getDate()).padStart(2, '0');
+          return `${yyyy}-${mm}-${dd}`;
+      }
+
+      const fechaHoy    = obtenerFechaLocalISO();       // YYYY-MM-DD
+      const fechaManana = sumarDiasISO(fechaHoy, 1);     // Tabla 2 siempre representa "mañana"
+
+      // Fecha que le corresponde a cada tabla: Tabla 1 = hoy, Tabla 2 = mañana.
+      // El backend (obtener_salidas.php -> asegurarDiaVigente) hace el traspaso
+      // automático de Tabla 2 a Tabla 1 al cruzar la medianoche, así que esta
+      // asignación siempre coincide con lo que hay en la base de datos.
+      const fechaPorTabla = { '1': fechaHoy, '2': fechaManana };
+
+      async function apiFetch(endpoint, opciones = {}) {
+          const resp = await fetch(API_BASE + endpoint, {
+              credentials: 'include',
+              headers: { 'Content-Type': 'application/json' },
+              ...opciones
+          });
+          const data = await resp.json();
+          if (data.status === 'error') throw new Error(data.message);
+          return data;
+      }
+
+      // =========================================================================================
+      // MODAL DE CONFIRMACIÓN (reemplaza confirm() nativo del navegador)
+      // Se usa como: const ok = await confirmarAccion({ titulo, mensaje, icono, textoConfirmar, peligro });
+      // Devuelve una Promise<boolean> — true si el usuario confirmó, false si canceló o cerró el modal.
+      // =========================================================================================
+      function confirmarAccion({ titulo = '¿Estás seguro?', mensaje = '', icono = '⚠️', textoConfirmar: textoBoton = 'Confirmar', peligro = false } = {}) {
+          return new Promise((resolve) => {
+              iconoConfirmar.textContent = icono;
+              tituloConfirmar.textContent = titulo;
+              textoConfirmar.textContent = mensaje;
+              btnConfirmarAccion.textContent = textoBoton;
+              btnConfirmarAccion.classList.toggle('btn-confirmar-peligro', peligro);
+              modalConfirmar.style.display = 'flex';
+
+              function limpiar(resultado) {
+                  modalConfirmar.style.display = 'none';
+                  btnConfirmarAccion.removeEventListener('click', alConfirmar);
+                  btnCancelarConfirmar.removeEventListener('click', alCancelar);
+                  modalConfirmar.removeEventListener('click', alClicFondo);
+                  resolve(resultado);
+              }
+              function alConfirmar() { limpiar(true); }
+              function alCancelar() { limpiar(false); }
+              function alClicFondo(e) { if (e.target === modalConfirmar) limpiar(false); }
+
+              btnConfirmarAccion.addEventListener('click', alConfirmar);
+              btnCancelarConfirmar.addEventListener('click', alCancelar);
+              modalConfirmar.addEventListener('click', alClicFondo);
+          });
+      }
+
+      // =========================================================================================
+      // ESTADO GLOBAL
+      // =========================================================================================
+      // Pantalla de login global (gate de acceso a todo el sitio)
+      const pantallaLoginGlobal = document.getElementById('pantallaLoginGlobal');
+      const tarjetaLogin = document.getElementById('tarjetaLogin');
+      const formLoginGlobal = document.getElementById('formularioLoginGlobal');
+      const txtUsuarioGlobal = document.getElementById('txtUsuarioGlobal');
+      const txtPasswordGlobal = document.getElementById('txtPasswordGlobal');
+      const msgErrorGlobal = document.getElementById('msgErrorGlobal');
+      const btnAccederGlobal = document.getElementById('btnAccederGlobal');
+      const videoLock = document.getElementById('videoLock');
+
+      const modalUsuarios = document.getElementById('modalUsuarios');
+      const modalHora = document.getElementById('modalHora');
+      const modalConsultar = document.getElementById('modalConsultar');
+      const modalHistorial = document.getElementById('modalHistorial');
+      const modalNoticias = document.getElementById('modalNoticias');
+      const btnAbrirUsuarios = document.getElementById('btnAbrirUsuarios');
+      const btnAbrirConsultar = document.getElementById('btnAbrirConsultar');
+      const btnAbrirHistorial = document.getElementById('btnAbrirHistorial');
+      const btnAbrirNoticias = document.getElementById('btnAbrirNoticias');
+      const btnCerrarUsuarios = document.getElementById('btnCerrarUsuarios');
+      const btnCerrarHora = document.getElementById('btnCerrarHora');
+      const btnCerrarConsultar = document.getElementById('btnCerrarConsultar');
+      const btnCerrarHistorial = document.getElementById('btnCerrarHistorial');
+      const btnCerrarNoticias = document.getElementById('btnCerrarNoticias');
+      const modalSocios = document.getElementById('modalSocios');
+      const btnAbrirSocios = document.getElementById('btnAbrirSocios');
+      const btnCerrarSocios = document.getElementById('btnCerrarSocios');
+      const filasNuevosSocios = document.getElementById('filasNuevosSocios');
+      const btnAgregarFilaSocio = document.getElementById('btnAgregarFilaSocio');
+      const btnGuardarSocios = document.getElementById('btnGuardarSocios');
+      const msgErrorSocios = document.getElementById('msgErrorSocios');
+      const msgExitoSocios = document.getElementById('msgExitoSocios');
+      const txtFiltrarSocios = document.getElementById('txtFiltrarSocios');
+      const listaSociosRegistrados = document.getElementById('listaSociosRegistrados');
+      const modalConfirmar = document.getElementById('modalConfirmar');
+      const iconoConfirmar = document.getElementById('iconoConfirmar');
+      const tituloConfirmar = document.getElementById('tituloConfirmar');
+      const textoConfirmar = document.getElementById('textoConfirmar');
+      const btnCancelarConfirmar = document.getElementById('btnCancelarConfirmar');
+      const btnConfirmarAccion = document.getElementById('btnConfirmarAccion');
+      const btnBuscarConsulta = document.getElementById('btnBuscarConsulta');
+      const btnInsertarJugadores = document.getElementById('btnInsertarJugadores');
+      const btnBuscarHistorial = document.getElementById('btnBuscarHistorial');
+      const inputFechaConsulta = document.getElementById('inputFechaConsulta');
+      const resultadoConsulta = document.getElementById('resultadoConsulta');
+      const inputFechaHistorial = document.getElementById('inputFechaHistorial');
+      const selTablaHistorial = document.getElementById('selTablaHistorial');
+      const resultadoHistorial = document.getElementById('resultadoHistorial');
+      const formRegistro = document.getElementById('formularioRegistro');
+      const formHora = document.getElementById('formularioHora');
+      const formNoticia = document.getElementById('formularioNoticia');
+      const chkNoticiaActiva = document.getElementById('chkNoticiaActiva');
+      const txtNoticiaContenido = document.getElementById('txtNoticiaContenido');
+      const msgErrorNoticia = document.getElementById('msgErrorNoticia');
+      const msgExitoNoticia = document.getElementById('msgExitoNoticia');
+      const footerNoticias = document.getElementById('footerNoticias');
+      const footerNoticiasTexto = document.getElementById('footerNoticiasTexto');
+      const badgeUsuario = document.getElementById('badgeUsuario');
+      const contenedorListaUsuarios = document.getElementById('listaUsuariosRegistrados');
+      const botonesExportar = document.querySelectorAll('.btn-exportar');
+      const filasExportar = document.querySelectorAll('.fila-exportar');
+
+      const botonesGuardar = document.querySelectorAll('.btn-guardar');
+      const botonesConfigHora = document.querySelectorAll('.btn-config-hora');
+      const botonesVaciado = document.querySelectorAll('.btn-vaciado');
+
+      // Elementos del bloque de clima (modal Noticias + esquina del footer)
+      const txtClimaCiudad = document.getElementById('txtClimaCiudad');
+      const btnBuscarClima = document.getElementById('btnBuscarClima');
+      const resultadosClimaBusqueda = document.getElementById('resultadosClimaBusqueda');
+      const footerNoticiasClima = document.getElementById('footerNoticiasClima');
+      const climaIcono = document.getElementById('climaIcono');
+      const climaTemp = document.getElementById('climaTemp');
+      const videoClimaFooter = document.getElementById('videoClimaFooter');
+      // Si el archivo de video de la categoría actual no carga (ruta mal
+      // escrita, archivo faltante, etc.), se avisa en la consola con la ruta
+      // exacta que se intentó usar, para depurar rápido sin adivinar.
+      videoClimaFooter.addEventListener('error', () => {
+          console.error('No se pudo cargar el video de clima:', videoClimaFooter.getAttribute('data-categoria-actual'), '→', videoClimaFooter.currentSrc || videoClimaFooter.src);
+      });
+
+      // Video de fondo del footer según la categoría de clima. Los archivos
+      // viven junto al resto de recursos multimedia del sitio (img/), igual
+      // que img/Logo.mp4 y img/lock.mp4.
+      const VIDEOS_CLIMA = {
+          soleado:  'img/clima-soleado.mp4',
+          nublado:  'img/clima-nublado.mp4',
+          niebla:   'img/clima-niebla.mp4',
+          llovizna: 'img/clima-llovizna.mp4',
+          lluvioso: 'img/clima-lluvioso.mp4',
+          nieve:    'img/clima-nieve.mp4',
+          severo:   'img/clima-severo.mp4'
+      };
+
+      let usuarioActual = null;
+      let rolActual = null;
+      let modoAdminActivo = false;
+      let tablaConfigurandoHora = null;
+
+      // Roles del sistema: admin (control total), operator (edita tablas),
+      // viewer (solo visualiza, sin edición ni herramientas administrativas).
+      const ETIQUETAS_ROL = { admin: 'Admin', operator: 'Operador', viewer: 'Visualizador' };
+
+      // Estado actual del footer de noticias (se sincroniza con el servidor
+      // para todos los visitantes, con sesión o sin ella).
+      let noticiaActiva = false;
+      let noticiaTexto = '';
+
+      // Ubicación configurada para el clima de la esquina del footer.
+      // Valor por defecto: San Francisco Coaxusco, Metepec, México (se sobrescribe
+      // en cuanto se lee lo que haya guardado el servidor).
+      let climaCiudad = 'San Francisco Coaxusco, Metepec, México';
+      let climaLat = 19.25934;
+      let climaLon = -99.60175;
+
+      // Categoría visual del clima actual, derivada del weathercode de
+      // Open-Meteo: controla la animación del footer y si se muestra la
+      // alerta automática de clima severo. 'soleado' | 'lluvioso' | 'severo' | 'nublado'
+      let climaCategoriaActual = 'nublado';
+
+      // Solo el reloj sigue calculándose en el navegador; el offset manual de
+      // fecha/hora ahora vive en el servidor (tabla config_hora_tablas) para que
+      // se sincronice entre todos los dispositivos.
+      const configTablas = {
+          '1': { idCuerpo: 'cuerpoTablaGolf1', idReloj: 'relojSuperior1', idFecha: 'fechaCentral1' },
+          '2': { idCuerpo: 'cuerpoTablaGolf2', idReloj: 'relojSuperior2', idFecha: 'fechaCentral2' }
+      };
+
+      // offsetMs por tabla, obtenido del servidor. 0 = usar la hora real sin ajuste.
+      let offsetsHora = { '1': 0, '2': 0 };
+
+      // =========================================================================================
+      // CARGA DE SALIDAS DESDE LA API
+      // obtener_salidas.php requiere fecha Y tabla_num, y devuelve filas "planas":
+      // { id, fecha, tabla_num, hoyo, hora_salida, campo, jugador_1..jugador_5, detalles }
+      // Cada tabla consulta SU propia fecha (Tabla 1 = hoy, Tabla 2 = mañana); el propio
+      // endpoint se encarga de sembrar y de hacer el traspaso automático de día.
+      // =========================================================================================
+      function formatearHora24ConAMPM(texto) {
+          const coincidencia = String(texto).match(/(\d{1,2}):(\d{2})/);
+          if (!coincidencia) { return texto; }
+          const horas = parseInt(coincidencia[1], 10);
+          const minutos = coincidencia[2];
+          const ampm = horas >= 12 ? 'PM' : 'AM';
+          const horasFormateadas = String(horas).padStart(2, '0');
+          return `${horasFormateadas}:${minutos} ${ampm}`;
+      }
+
+      async function cargarSalidasDeTabla(numTabla) {
+          const fecha = fechaPorTabla[numTabla];
+          const { data } = await apiFetch(`obtener_salidas.php?fecha=${fecha}&tabla_num=${numTabla}`);
+          return data; // arreglo de filas
+      }
+
+      async function cargarSalidas() {
+          try {
+              const [filasTabla1, filasTabla2] = await Promise.all([
+                  cargarSalidasDeTabla('1'),
+                  cargarSalidasDeTabla('2')
+              ]);
+              const data = { '1': filasTabla1, '2': filasTabla2 };
+
+              // Guardamos la posición de scroll ANTES de vaciar/reconstruir las
+              // filas. cuerpo.innerHTML = '' dfeja el contenedor sin alto por
+              // un instante (hasta que se vuelven a insertar las filas), y como
+              // .tabla-contenedor-scroll hace su propio scroll (overflow-y:
+              // auto) el navegador recorta ese scroll a lo que cabe en ese
+              // momento. Sin restaurarlo a mano después, la pantalla se va
+              // "subiendo" sola un poco en cada auto-refresco (cada 2s) aunque
+              // el usuario no haya tocado nada. Guardamos tanto el scroll de la
+              // página como el de cada contenedor de tabla, por si el layout
+              // usa uno u otro según el tamaño de pantalla.
+              const scrollPaginaGuardado = window.scrollY;
+              const scrollContenedoresGuardados = new Map();
+              document.querySelectorAll('.tabla-contenedor-scroll').forEach(contenedor => {
+                  scrollContenedoresGuardados.set(contenedor, contenedor.scrollTop);
+              });
+
+              ['1', '2'].forEach(numTabla => {
+                  const cuerpo = document.getElementById(configTablas[numTabla].idCuerpo);
+                  cuerpo.innerHTML = '';
+
+                  data[numTabla].forEach(fila => {
+                      const jugadores = [fila.jugador_1, fila.jugador_2, fila.jugador_3, fila.jugador_4, fila.jugador_5];
+                      const tr = document.createElement('tr');
+                      tr.dataset.teeTimeId = fila.id;
+                      // El valor de cada celda va envuelto en <span class="valor-editable">,
+                      // que es lo único a lo que se le pone contenteditable. El <td> nunca
+                      // es editable directamente: así el pseudo-elemento ::before (la
+                      // etiqueta "JUGADOR 1", "HORARIO", etc. en vista móvil) nunca queda
+                      // dentro del área que el navegador reflowea al editar, y no se pinta
+                      // encima del texto.
+                      tr.innerHTML = `
+                          <td class="col-hoyo" data-label="Hoyo"><span class="valor-editable">${fila.hoyo}</span></td>
+                          <td class="col-horario" data-label="Horario"><span class="valor-editable">${formatearHora24ConAMPM(fila.hora_salida)}</span></td>
+                          ${jugadores.map((j, i) => `<td class="col-jugador" data-label="Jugador ${i + 1}"><span class="valor-editable">${j ?? ''}</span></td>`).join('')}
+                          <td class="col-campo" data-label="Campo"><span class="valor-editable">${fila.campo || 'Norte'}</span></td>
+                          <td class="col-detalles" data-label="Detalles"><span class="valor-editable">${fila.detalles ?? ''}</span></td>
+                      `;
+                      cuerpo.appendChild(tr);
+                  });
+              });
+
+              alternarModoEdicion(modoAdminActivo);
+              actualizarTodasLasTablas();
+
+              // Este es el punto importante: las tablas ya tienen su altura real.
+              // Se resetea SOLO la primera vez que se cargan los datos, para
+              // neutralizar cualquier scrollTop restaurado durante el crecimiento
+              // inicial de la tabla. Las cargas siguientes (auto-refresco cada 2s)
+              // ya no deben tocar el scroll: el usuario puede estar viendo o
+              // editando filas más abajo, y resetear aquí se lo interrumpiría
+              // cada 2 segundos.
+              if (!cargaInicialSalidasCompleta) {
+                  cargaInicialSalidasCompleta = true;
+                  resetearScrollSoloAlCargar();
+                  requestAnimationFrame(resetearScrollSoloAlCargar);
+                  setTimeout(resetearScrollSoloAlCargar, 100);
+                  setTimeout(resetearScrollSoloAlCargar, 300);
+                  setTimeout(resetearScrollSoloAlCargar, 800);
+              } else {
+                  // Auto-refrescos siguientes: NO reseteamos a 0, restauramos
+                  // la posición exacta en la que estaba el usuario antes de
+                  // reconstruir las filas (ver comentario arriba). Se hace en
+                  // el mismo instante (sin esperar al siguiente frame) para
+                  // que el navegador nunca llegue a pintar el estado
+                  // "recortado" intermedio.
+                  window.scrollTo({ top: scrollPaginaGuardado, left: 0, behavior: 'auto' });
+                  scrollContenedoresGuardados.forEach((valorScrollTop, contenedor) => {
+                      contenedor.scrollTop = valorScrollTop;
+                  });
+              }
+          } catch (err) {
+              console.error('Error al cargar salidas:', err);
+              alert('No se pudieron cargar las salidas: ' + err.message);
+          }
+      }
+
+      // =========================================================================================
+      // MODO DE EDICIÓN
+      // Todas las columnas de datos (incluyendo "Detalles", que ahora es un campo de notas
+      // libres guardado en la base de datos) se vuelven editables cuando hay sesión iniciada.
+      // El contenteditable se aplica al <span class="valor-editable"> interno, NUNCA al <td>,
+      // para no romper el layout de la etiqueta ::before en la vista móvil.
+      // El botón de Noticias, igual que Guardar/Vaciado/Config. Hora, está disponible tanto
+      // para operadores como para administradores (no requiere rol admin).
+      // =========================================================================================
+      function alternarModoEdicion(activar) {
+          // Un viewer jamás debe quedar en modo edición, sin importar qué
+          // valor llegue aquí desde otros flujos (p.ej. cargarSalidas()).
+          if (rolActual === 'viewer') activar = false;
+
+          modoAdminActivo = activar;
+          document.querySelectorAll('.tabla-salidas tbody td .valor-editable').forEach(celda => {
+              celda.setAttribute('contenteditable', activar ? 'true' : 'false');
+          });
+
+          botonesGuardar.forEach(btn => { btn.style.display = activar ? 'inline-block' : 'none'; });
+          botonesConfigHora.forEach(btn => { btn.style.display = activar ? 'inline-block' : 'none'; });
+          botonesVaciado.forEach(btn => { btn.style.display = activar ? 'inline-block' : 'none'; });
+          filasExportar.forEach(fila => { fila.style.display = activar ? 'flex' : 'none'; });
+          btnAbrirNoticias.style.display = activar ? 'inline-block' : 'none';
+      }
+
+      // =========================================================================================
+      // PANTALLA DE LOGIN GLOBAL (GATE DE ACCESO)
+      // Reemplaza el botón fantasma "Iniciar Sesión" + modal anterior. Ahora el acceso es
+      // obligatorio: nadie ve ni edita las tablas sin sesión válida (excepto en modo kiosco,
+      // que la oculta siempre por CSS). mostrarLoginGate()/ocultarLoginGate() controlan su
+      // visibilidad; aplicarSesionUI() decide cuál llamar según haya o no usuario.
+      //
+      // CORRECCIÓN DE SCROLL (3 causas cubiertas):
+      //   1) overflow-anchor: none ya aplicado por CSS en html/body/.pantalla-login-global,
+      //      para que el navegador no reajuste el scroll cuando el video/las imágenes de
+      //      fondo terminan de cargar y cambian de tamaño por encima del viewport.
+      //   2) El atributo "autofocus" del input de usuario se quitó del HTML: el foco se
+      //      hace aquí abajo con { preventScroll: true }, para que el navegador no dispare
+      //      su propio scrollIntoView al enfocar (eso rompía el gate en TV).
+      //   3) window.scrollTo(0,0) ya no se ejecuta una sola vez: se reintenta en varios
+      //      momentos (0/50/150/300/600/1000 ms) para cubrir a los videos/imágenes que
+      //      terminan de cargar tarde, y además se activa un listener de "scroll" que
+      //      revierte cualquier desplazamiento a 0 mientras el gate esté visible.
+      // =========================================================================================
+      let vigilanciaScrollGateActiva = false;
+
+      function manejarScrollDuranteGate() {
+          if (!vigilanciaScrollGateActiva) return;
+          if (window.scrollY !== 0 || window.scrollX !== 0) {
+              window.scrollTo(0, 0);
+          }
+      }
+
+      function mostrarLoginGate() {
+          if (modoKiosco) return; // el modo kiosco nunca debe pedir login
+          pantallaLoginGlobal.classList.remove('login-oculto');
+          txtPasswordGlobal.value = '';
+          msgErrorGlobal.style.display = 'none';
+          window.scrollTo(0, 0);
+          vigilanciaScrollGateActiva = true;
+
+          if (videoLock) {
+              videoLock.currentTime = 0;
+              videoLock.play().catch(() => {});
+          }
+
+          // Reintentos de scrollTo(0,0) en varios momentos: el primer scrollTo
+          // puede ejecutarse ANTES de que terminen de cargar el video/las
+          // imágenes de fondo, que al definir su tamaño real pueden volver a
+          // mover el scroll. Se cubre con varios intentos escalonados en vez
+          // de uno solo.
+          [0, 50, 150, 300, 600, 1000].forEach(retraso => {
+              setTimeout(() => {
+                  if (vigilanciaScrollGateActiva) window.scrollTo(0, 0);
+              }, retraso);
+          });
+
+          // El foco se hace aparte y con preventScroll:true, para que el
+          // propio navegador no dispare su scrollIntoView interno al
+          // enfocar el campo (eso es lo que rompía el gate en TV).
+          setTimeout(() => {
+              if (vigilanciaScrollGateActiva) {
+                  txtUsuarioGlobal.focus({ preventScroll: true });
+              }
+          }, 50);
+      }
+
+      function ocultarLoginGate() {
+          pantallaLoginGlobal.classList.add('login-oculto');
+          vigilanciaScrollGateActiva = false;
+          window.scrollTo(0, 0);
+      }
+
+      window.addEventListener('scroll', manejarScrollDuranteGate, { passive: true });
+
+      formLoginGlobal.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const username = txtUsuarioGlobal.value.trim();
+          const password = txtPasswordGlobal.value;
+
+          msgErrorGlobal.style.display = 'none';
+          btnAccederGlobal.classList.add('cargando');
+
+          try {
+              const { user } = await apiFetch('login.php', {
+                  method: 'POST',
+                  body: JSON.stringify({ username, password })
+              });
+              aplicarSesionUI(user);
+          } catch (err) {
+              msgErrorGlobal.textContent = err.message || 'Usuario o contraseña incorrectos.';
+              msgErrorGlobal.style.display = 'block';
+              tarjetaLogin.classList.remove('vibrar');
+              // Forzar reflow para poder reiniciar la animación si falla dos
+              // veces seguidas (si no, el navegador no la vuelve a disparar).
+              void tarjetaLogin.offsetWidth;
+              tarjetaLogin.classList.add('vibrar');
+          } finally {
+              btnAccederGlobal.classList.remove('cargando');
+          }
+      });
+
+      // =========================================================================================
+      // SESIÓN
+      // =========================================================================================
+      function aplicarSesionUI(user) {
+          if (!user) {
+              badgeUsuario.style.display = 'none';
+              btnAbrirUsuarios.style.display = 'none';
+              btnAbrirConsultar.style.display = 'none';
+              btnAbrirHistorial.style.display = 'none';
+              btnAbrirSocios.style.display = 'none';
+              usuarioActual = null;
+              rolActual = null;
+              alternarModoEdicion(false);
+              mostrarLoginGate();
+              return;
+          }
+
+          usuarioActual = user.username;
+          rolActual = user.role;
+          const etiquetaRol = ETIQUETAS_ROL[rolActual] || 'Operador';
+          badgeUsuario.textContent = `🛠️ ${etiquetaRol}: ${usuarioActual.toUpperCase()} (Salir)`;
+          badgeUsuario.style.display = 'inline-block';
+          btnAbrirUsuarios.style.display = (rolActual === 'admin') ? 'inline-block' : 'none';
+          btnAbrirConsultar.style.display = (rolActual === 'admin') ? 'inline-block' : 'none';
+          btnAbrirHistorial.style.display = (rolActual === 'admin') ? 'inline-block' : 'none';
+          btnAbrirSocios.style.display = (rolActual === 'admin') ? 'inline-block' : 'none';
+          // El rol viewer nunca entra en modo edición: solo visualiza las tablas
+          // (alternarModoEdicion ya fuerza esto internamente, pero se pasa
+          // explícito aquí para que quede claro en el flujo).
+          alternarModoEdicion(rolActual !== 'viewer');
+          ocultarLoginGate();
+      }
+
+      async function restaurarSesion() {
+          try {
+              const { user } = await apiFetch('sesion_actual.php');
+              aplicarSesionUI(user);
+          } catch (err) {
+              aplicarSesionUI(null);
+          }
+      }
+
+      btnAbrirUsuarios.addEventListener('click', () => {
+          if (rolActual !== 'admin') { return; }
+          modalUsuarios.style.display = 'flex';
+          document.getElementById('msgErrorRegistro').style.display = 'none';
+          document.getElementById('msgExitoRegistro').style.display = 'none';
+          formRegistro.reset();
+          renderListaUsuarios();
+      });
+      btnCerrarUsuarios.addEventListener('click', () => { modalUsuarios.style.display = 'none'; });
+
+      badgeUsuario.addEventListener('click', async () => {
+          const confirmado = await confirmarAccion({
+              titulo: '¿Cerrar sesión?',
+              mensaje: 'Se bloquearán las celdas de ambas tablas hasta que alguien vuelva a iniciar sesión.',
+              icono: '🔒',
+              textoConfirmar: 'Cerrar sesión'
+          });
+          if (!confirmado) return;
+          try {
+              await apiFetch('logout.php', { method: 'POST' });
+          } catch (err) {
+              console.error(err);
+          }
+          modalUsuarios.style.display = 'none';
+          aplicarSesionUI(null);
+      });
+
+      // =========================================================================================
+      // GESTIÓN DE USUARIOS (solo Administradores) vía usuarios.php
+      // =========================================================================================
+      formRegistro.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          if (rolActual !== 'admin') return;
+
+          const username = document.getElementById('txtNuevoUsuario').value.trim();
+          const password = document.getElementById('txtNuevaPassword').value;
+          const role = document.getElementById('selNuevoRolUsuario').value;
+          const errorReg = document.getElementById('msgErrorRegistro');
+          const exitoReg = document.getElementById('msgExitoRegistro');
+          errorReg.style.display = 'none';
+          exitoReg.style.display = 'none';
+
+          try {
+              await apiFetch('usuarios.php', {
+                  method: 'POST',
+                  body: JSON.stringify({ username, password, role })
+              });
+              exitoReg.style.display = 'block';
+              formRegistro.reset();
+              renderListaUsuarios();
+          } catch (err) {
+              errorReg.textContent = err.message;
+              errorReg.style.display = 'block';
+          }
+      });
+
+      async function renderListaUsuarios() {
+          if (rolActual !== 'admin') {
+              contenedorListaUsuarios.innerHTML = '';
+              return;
+          }
+
+          let usuarios = [];
+          try {
+              const resp = await apiFetch('usuarios.php');
+              usuarios = resp.data;
+          } catch (err) {
+              contenedorListaUsuarios.innerHTML = `<p class="error-mensaje" style="display:block;">${err.message}</p>`;
+              return;
+          }
+
+          const totalAdmins = usuarios.filter(u => u.role === 'admin').length;
+
+          let html = '<table class="tabla-usuarios"><thead><tr><th>Usuario</th><th>Rol</th><th>Nueva contraseña</th><th></th><th></th></tr></thead><tbody>';
+
+          usuarios.forEach(u => {
+              const esUltimoAdmin = (u.role === 'admin' && totalAdmins <= 1);
+              html += `<tr data-id="${u.id}">
+                  <td>${u.username}</td>
+                  <td>
+                      <select class="select-rol" data-id="${u.id}" ${esUltimoAdmin ? 'disabled' : ''}>
+                          <option value="operator" ${u.role === 'operator' ? 'selected' : ''}>Usuario</option>
+                          <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>Administrador</option>
+                          <option value="viewer" ${u.role === 'viewer' ? 'selected' : ''}>Visualizador</option>
+                      </select>
+                  </td>
+                  <td>
+                      <input type="password" class="input-password" data-id="${u.id}" placeholder="Dejar en blanco para no cambiar">
+                  </td>
+                  <td><button type="button" class="btn-guardar-rol" data-id="${u.id}">Guardar</button></td>
+                  <td><button type="button" class="btn-eliminar-usuario" data-id="${u.id}" ${esUltimoAdmin ? 'disabled title="Debe existir al menos un administrador"' : ''}>Eliminar</button></td>
+              </tr>`;
+          });
+
+          html += '</tbody></table>';
+          contenedorListaUsuarios.innerHTML = html;
+
+          contenedorListaUsuarios.querySelectorAll('.btn-guardar-rol').forEach(btn => {
+              btn.addEventListener('click', async () => {
+                  const id = btn.getAttribute('data-id');
+                  const select = contenedorListaUsuarios.querySelector(`.select-rol[data-id="${id}"]`);
+                  const inputPass = contenedorListaUsuarios.querySelector(`.input-password[data-id="${id}"]`);
+
+                  const body = { id: Number(id), role: select.value };
+                  if (inputPass.value) body.password = inputPass.value;
+
+                  try {
+                      await apiFetch('usuarios.php', { method: 'PUT', body: JSON.stringify(body) });
+                      alert('Usuario actualizado correctamente.');
+                      renderListaUsuarios();
+                  } catch (err) {
+                      alert('Error: ' + err.message);
+                  }
+              });
+          });
+
+          contenedorListaUsuarios.querySelectorAll('.btn-eliminar-usuario').forEach(btn => {
+              btn.addEventListener('click', async () => {
+                  const id = btn.getAttribute('data-id');
+                  const confirmado = await confirmarAccion({
+                      titulo: '¿Eliminar usuario?',
+                      mensaje: 'Esta acción no se puede deshacer.',
+                      icono: '🗑️',
+                      textoConfirmar: 'Eliminar',
+                      peligro: true
+                  });
+                  if (!confirmado) return;
+
+                  try {
+                      await apiFetch(`usuarios.php?id=${id}`, { method: 'DELETE' });
+                      renderListaUsuarios();
+                  } catch (err) {
+                      alert('Error: ' + err.message);
+                  }
+              });
+          });
+      }
+
+      // =========================================================================================
+      // GUARDAR / VACIAR
+      // =========================================================================================
+      function extraerFilasDeTabla(numTabla) {
+          const cuerpo = document.getElementById(configTablas[numTabla].idCuerpo);
+          return Array.from(cuerpo.querySelectorAll('tr')).map(tr => ({
+              tee_time_id: Number(tr.dataset.teeTimeId),
+              campo: tr.querySelector('.col-campo').textContent.trim(),
+              detalles: tr.querySelector('.col-detalles').textContent.trim(),
+              jugadores: Array.from(tr.querySelectorAll('.col-jugador')).map(td => td.textContent.trim())
+          }));
+      }
+
+      botonesGuardar.forEach(btn => {
+          btn.addEventListener('click', async () => {
+              const numTabla = btn.getAttribute('data-tabla');
+              const filas = extraerFilasDeTabla(numTabla);
+
+              try {
+                  alternarModoEdicion(false);
+                  await apiFetch('guardar_tabla.php', { method: 'POST', body: JSON.stringify({ filas }) });
+                  alert(`¡Tabla ${numTabla} guardada en la base de datos!`);
+                  mostrarIndicadorAutoguardado(numTabla);
+              } catch (err) {
+                  alert('Error al guardar: ' + err.message);
+              } finally {
+                  alternarModoEdicion(true);
+              }
+          });
+      });
+
+      botonesVaciado.forEach(btn => {
+          btn.addEventListener('click', async () => {
+              const numTabla = btn.getAttribute('data-tabla');
+              const confirmado = await confirmarAccion({
+                  titulo: `¿Vaciar la Tabla ${numTabla}?`,
+                  mensaje: 'Se eliminarán todos los jugadores registrados en esta tabla. Esta acción no se puede deshacer.',
+                  icono: '🗑️',
+                  textoConfirmar: 'Vaciar tabla',
+                  peligro: true
+              });
+              if (!confirmado) return;
+
+              try {
+                  await apiFetch('vaciar_jugadores.php', {
+                      method: 'POST',
+                      body: JSON.stringify({ fecha: fechaPorTabla[numTabla], tabla_num: Number(numTabla) })
+                  });
+                  await cargarSalidas();
+                  alert(`Los jugadores de la Tabla ${numTabla} han sido vaciados.`);
+              } catch (err) {
+                  alert('Error al vaciar: ' + err.message);
+              }
+          });
+      });
+
+      window.addEventListener('click', (e) => {
+          if (e.target === modalUsuarios) modalUsuarios.style.display = 'none';
+          if (e.target === modalHora) modalHora.style.display = 'none';
+          if (e.target === modalConsultar) modalConsultar.style.display = 'none';
+          if (e.target === modalHistorial) modalHistorial.style.display = 'none';
+          if (e.target === modalNoticias) modalNoticias.style.display = 'none';
+          if (e.target === modalSocios) modalSocios.style.display = 'none';
+      });
+
+      // =========================================================================================
+      // AUTOGUARDADO
+      // Cada 18 segundos se guarda automáticamente lo que haya en pantalla (ambas tablas),
+      // igual que si se hubiera presionado "Guardar", pero de forma silenciosa. Se salta el
+      // ciclo si el usuario está escribiendo en ese momento, para no interrumpirlo.
+      // =========================================================================================
+      const INTERVALO_AUTOGUARDADO_MS = 18000; // 18 segundos
+
+      function mostrarIndicadorAutoguardado(numTabla) {
+          const indicador = document.getElementById(`autoguardado${numTabla}`);
+          if (!indicador) return;
+          const horaActual = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+          indicador.textContent = `Guardado ✓ ${horaActual}`;
+          indicador.classList.add('visible');
+          clearTimeout(indicador._timeoutOculto);
+          indicador._timeoutOculto = setTimeout(() => indicador.classList.remove('visible'), 4000);
+      }
+
+      async function guardarTablaSilenciosa(numTabla) {
+          const filas = extraerFilasDeTabla(numTabla);
+          if (!filas.length) return;
+
+          try {
+              await apiFetch('guardar_tabla.php', { method: 'POST', body: JSON.stringify({ filas }) });
+              mostrarIndicadorAutoguardado(numTabla);
+          } catch (err) {
+              console.error(`Autoguardado falló en Tabla ${numTabla}:`, err.message);
+          }
+      }
+
+      async function autoguardarTodasLasTablas() {
+          if (!modoAdminActivo) return; // solo tiene sentido si hay sesión iniciada
+          if (hayEdicionEnCurso()) return; // no interrumpir mientras se está escribiendo
+          await Promise.all(Object.keys(configTablas).map(numTabla => guardarTablaSilenciosa(numTabla)));
+      }
+
+      // =========================================================================================
+      // CONSULTAR JUGADORES POR FECHA (solo lectura)
+      // Reutiliza obtener_salidas.php con la fecha elegida, para tabla_num 1 y 2.
+      // =========================================================================================
+      btnAbrirConsultar.addEventListener('click', () => {
+          if (rolActual !== 'admin') { return; }
+          resultadoConsulta.innerHTML = '';
+          inputFechaConsulta.value = fechaHoy;
+          modalConsultar.style.display = 'flex';
+      });
+      btnCerrarConsultar.addEventListener('click', () => { modalConsultar.style.display = 'none'; });
+
+      function renderTablaConsultaSoloLectura(filas, tituloTabla) {
+          const filasConJugadores = (filas || []).filter(fila =>
+              [fila.jugador_1, fila.jugador_2, fila.jugador_3, fila.jugador_4, fila.jugador_5].some(j => j)
+          );
+
+          if (filasConJugadores.length === 0) {
+              return `<h4>${tituloTabla}</h4><p class="aviso-sin-datos-consulta">Sin jugadores registrados en esta fecha.</p>`;
+          }
+
+          let html = `<h4>${tituloTabla}</h4><table class="tabla-consulta"><thead><tr>
+              <th>Hoyo</th><th>Horario</th><th>Jugador 1</th><th>Jugador 2</th><th>Jugador 3</th><th>Jugador 4</th><th>Jugador 5</th><th>Campo</th><th>Detalles</th>
+          </tr></thead><tbody>`;
+
+          filasConJugadores.forEach(fila => {
+              html += `<tr>
+                  <td>${fila.hoyo}</td>
+                  <td>${formatearHora24ConAMPM(fila.hora_salida)}</td>
+                  <td>${fila.jugador_1 ?? ''}</td>
+                  <td>${fila.jugador_2 ?? ''}</td>
+                  <td>${fila.jugador_3 ?? ''}</td>
+                  <td>${fila.jugador_4 ?? ''}</td>
+                  <td>${fila.jugador_5 ?? ''}</td>
+                  <td>${fila.campo || 'Norte'}</td>
+                  <td>${fila.detalles ?? ''}</td>
+              </tr>`;
+          });
+
+          html += '</tbody></table>';
+          return html;
+      }
+
+      async function buscarJugadoresPorFecha() {
+          const fecha = inputFechaConsulta.value;
+          if (!fecha) { alert('Selecciona una fecha.'); return; }
+
+          resultadoConsulta.innerHTML = '<p style="text-align:center; padding: 10px 0;">Buscando...</p>';
+          try {
+              const { data } = await apiFetch(`consultar_jugadores.php?fecha=${fecha}`);
+              resultadoConsulta.innerHTML =
+                  renderTablaConsultaSoloLectura(data['1'], 'Tabla 1') +
+                  renderTablaConsultaSoloLectura(data['2'], 'Tabla 2');
+          } catch (err) {
+              resultadoConsulta.innerHTML = `<p class="error-mensaje" style="display:block;">${err.message}</p>`;
+          }
+      }
+
+      btnBuscarConsulta.addEventListener('click', buscarJugadoresPorFecha);
+      inputFechaConsulta.addEventListener('change', buscarJugadoresPorFecha);
+
+      // =========================================================================================
+      // INSERTAR JUGADORES DE UN DÍA ANTERIOR (solo Administradores)
+      // Toma la fecha elegida arriba (la misma que usa "Buscar") como ORIGEN, pregunta de
+      // cuál de las dos tablas de esa fecha se quiere tomar la información y en cuál tabla
+      // actual (1 o 2) se quiere insertar, y llama a insertar_jugadores.php. Sobrescribe lo
+      // que haya actualmente en la tabla destino, así que pide confirmación explícita.
+      // =========================================================================================
+      btnInsertarJugadores.addEventListener('click', async () => {
+          const fechaOrigen = inputFechaConsulta.value;
+          if (!fechaOrigen) { alert('Selecciona primero la fecha de origen.'); return; }
+
+          const tablaOrigen = prompt(`¿De cuál tabla quieres tomar los datos guardados el ${fechaOrigen}? Escribe 1 o 2.`, '1');
+          if (tablaOrigen === null) return; // canceló
+          if (!['1', '2'].includes(tablaOrigen.trim())) { alert('Debes escribir 1 o 2.'); return; }
+
+          const tablaDestino = prompt('¿En cuál tabla ACTUAL quieres insertar esos datos? Escribe 1 o 2.', '1');
+          if (tablaDestino === null) return; // canceló
+          if (!['1', '2'].includes(tablaDestino.trim())) { alert('Debes escribir 1 o 2.'); return; }
+
+          const confirmado = await confirmarAccion({
+              titulo: '¿Sobrescribir jugadores?',
+              mensaje: `Esto sobrescribirá los jugadores actuales de la Tabla ${tablaDestino} con lo guardado en la Tabla ${tablaOrigen} del ${fechaOrigen}.`,
+              icono: '📥',
+              textoConfirmar: 'Sobrescribir',
+              peligro: true
+          });
+          if (!confirmado) return;
+
+          try {
+              const resp = await apiFetch('insertar_jugadores.php', {
+                  method: 'POST',
+                  body: JSON.stringify({
+                      fecha_origen: fechaOrigen,
+                      tabla_origen: Number(tablaOrigen),
+                      tabla_destino: Number(tablaDestino)
+                  })
+              });
+              alert(`Listo: se insertaron ${resp.hoyos_insertados} hoyos en la Tabla ${tablaDestino} (fecha ${resp.fecha_destino}).`);
+              await cargarSalidas();
+          } catch (err) {
+              alert('Error al insertar: ' + err.message);
+          }
+      });
+
+      // =========================================================================================
+      // EXPORTAR PDF / EXCEL
+      // Todo se genera del lado del navegador con lo que YA está en pantalla
+      // (sin pedirle nada al servidor): PDF abre una vista de impresión lista
+      // para "Guardar como PDF"; Excel descarga un .xls real (tabla HTML con
+      // el encabezado que Excel reconoce).
+      // =========================================================================================
+      function filasVisiblesParaExportar(numTabla) {
+          const cuerpo = document.getElementById(configTablas[numTabla].idCuerpo);
+          return Array.from(cuerpo.querySelectorAll('tr')).map(tr => {
+              const celdas = Array.from(tr.querySelectorAll('td')).map(td => td.textContent.trim());
+              return celdas;
+          });
+      }
+
+      function construirTablaHtmlExportar(numTabla) {
+          const encabezados = ['Hoyo', 'Horario', 'Jugador 1', 'Jugador 2', 'Jugador 3', 'Jugador 4', 'Jugador 5', 'Campo', 'Detalles'];
+          const filas = filasVisiblesParaExportar(numTabla);
+          const filasHtml = filas.map(celdas => `<tr>${celdas.map(c => `<td>${c || ''}</td>`).join('')}</tr>`).join('');
+          const encabezadosHtml = encabezados.map(h => `<th>${h}</th>`).join('');
+          return { encabezadosHtml, filasHtml };
+      }
+
+      function exportarPDF(numTabla) {
+          const fechaTitulo = document.getElementById(configTablas[numTabla].idFecha).textContent;
+          const { encabezadosHtml, filasHtml } = construirTablaHtmlExportar(numTabla);
+
+          const ventana = window.open('', '_blank');
+          if (!ventana) { alert('Permite las ventanas emergentes para poder exportar a PDF.'); return; }
+
+          ventana.document.write(`<!doctype html><html><head><meta charset="utf-8">
+              <title>Tabla ${numTabla} - ${fechaTitulo}</title>
+              <style>
+                  body { font-family: Arial, sans-serif; padding: 20px; color: #1c1c1c; }
+                  h1 { text-align:center; color:#113426; font-size: 1.4rem; margin-bottom: 4px; }
+                  h2 { text-align:center; color:#555; font-size: 1rem; font-weight: normal; margin-top: 0; margin-bottom: 20px; }
+                  table { width:100%; border-collapse: collapse; font-size: 0.8rem; }
+                  th, td { border:1px solid #999; padding:6px 8px; text-align:left; }
+                  th { background:#113426; color:#fff; text-transform: uppercase; font-size: 0.7rem; }
+                  tr:nth-child(even) { background:#f5f5f0; }
+                  @media print { body { padding: 0; } }
+              </style>
+              </head><body>
+              <h1>Club de Golf San Carlos</h1>
+              <h2>Tabla ${numTabla} — ${fechaTitulo}</h2>
+              <table><thead><tr>${encabezadosHtml}</tr></thead><tbody>${filasHtml}</tbody></table>
+              </body></html>`);
+          ventana.document.close();
+          ventana.focus();
+          setTimeout(() => ventana.print(), 350);
+      }
+
+      function exportarExcel(numTabla) {
+          const fechaTitulo = document.getElementById(configTablas[numTabla].idFecha).textContent;
+          const { encabezadosHtml, filasHtml } = construirTablaHtmlExportar(numTabla);
+
+          const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+              <head><meta charset="utf-8"></head>
+              <body>
+              <h2>Club de Golf San Carlos — Tabla ${numTabla} — ${fechaTitulo}</h2>
+              <table border="1"><tr>${encabezadosHtml}</tr>${filasHtml}</table>
+              </body></html>`;
+
+          const blob = new Blob(['\ufeff' + html], { type: 'application/vnd.ms-excel' });
+          const nombreArchivo = `Tabla${numTabla}_${fechaTitulo.replace(/[^a-zA-Z0-9]/g, '_')}.xls`;
+          const enlace = document.createElement('a');
+          enlace.href = URL.createObjectURL(blob);
+          enlace.download = nombreArchivo;
+          document.body.appendChild(enlace);
+          enlace.click();
+          document.body.removeChild(enlace);
+          URL.revokeObjectURL(enlace.href);
+      }
+
+      botonesExportar.forEach(btn => {
+          btn.addEventListener('click', () => {
+              const numTabla = btn.getAttribute('data-tabla');
+              const formato = btn.getAttribute('data-formato');
+              if (formato === 'pdf') { exportarPDF(numTabla); } else { exportarExcel(numTabla); }
+          });
+      });
+
+      // =========================================================================================
+      // HISTORIAL DE CAMBIOS (solo Administradores)
+      // =========================================================================================
+      btnAbrirHistorial.addEventListener('click', () => {
+          if (rolActual !== 'admin') { return; }
+          inputFechaHistorial.value = fechaHoy;
+          selTablaHistorial.value = '';
+          resultadoHistorial.innerHTML = '';
+          modalHistorial.style.display = 'flex';
+          buscarHistorial();
+      });
+      btnCerrarHistorial.addEventListener('click', () => { modalHistorial.style.display = 'none'; });
+
+      function etiquetaAccion(accion) {
+          const nombres = { editar_hoyo: 'Editado', vaciar_hoyo: 'Vaciado', insertar_hoyo: 'Insertado' };
+          return `<span class="etiqueta-accion ${accion}">${nombres[accion] || accion}</span>`;
+      }
+
+      // Compara los objetos "antes" y "después" de un cambio y devuelve solo
+      // los campos que realmente son distintos, en texto legible.
+      function formatearDiferencias(antes, despues) {
+          if (!despues) return '';
+          const etiquetasJugador = ['Jugador 1', 'Jugador 2', 'Jugador 3', 'Jugador 4', 'Jugador 5'];
+          const lineas = [];
+
+          const campoAntes = antes ? (antes.campo ?? '') : null;
+          const campoDespues = despues.campo ?? '';
+          if (campoAntes !== campoDespues) {
+              lineas.push(`Campo: "${campoAntes ?? '(vacío)'}" → "${campoDespues || '(vacío)'}"`);
+          }
+
+          const detallesAntes = antes ? (antes.detalles ?? '') : null;
+          const detallesDespues = despues.detalles ?? '';
+          if (detallesAntes !== detallesDespues) {
+              lineas.push(`Detalles: "${detallesAntes || '(vacío)'}" → "${detallesDespues || '(vacío)'}"`);
+          }
+
+          const jugadoresAntes = (antes && antes.jugadores) ? antes.jugadores : [null, null, null, null, null];
+          const jugadoresDespues = despues.jugadores || [null, null, null, null, null];
+          jugadoresDespues.forEach((valor, i) => {
+              const anterior = jugadoresAntes[i] ?? '';
+              const nuevo = valor ?? '';
+              if (anterior !== nuevo) {
+                  lineas.push(`${etiquetasJugador[i]}: "${anterior || '(vacío)'}" → "${nuevo || '(vacío)'}"`);
+              }
+          });
+
+          if (lineas.length === 0) return '<span style="color:#999;">Sin diferencias</span>';
+          return `<ul class="diferencias-historial">${lineas.map(l => `<li>${l}</li>`).join('')}</ul>`;
+      }
+
+      async function buscarHistorial() {
+          resultadoHistorial.innerHTML = '<p style="text-align:center; padding: 10px 0;">Buscando...</p>';
+
+          const parametros = new URLSearchParams();
+          if (inputFechaHistorial.value) parametros.set('fecha', inputFechaHistorial.value);
+          if (selTablaHistorial.value) parametros.set('tabla_num', selTablaHistorial.value);
+
+          try {
+              const { data } = await apiFetch(`obtener_historial.php?${parametros.toString()}`);
+
+              if (!data.length) {
+                  resultadoHistorial.innerHTML = '<p class="aviso-sin-datos-consulta">No hay cambios registrados con esos filtros.</p>';
+                  return;
+              }
+
+              let html = `<table class="tabla-historial"><thead><tr>
+                  <th>Fecha/Hora</th><th>Usuario</th><th>Acción</th><th>Tabla</th><th>Hoyo</th><th>Cambios</th>
+              </tr></thead><tbody>`;
+
+              data.forEach(fila => {
+                  const fechaHora = new Date(fila.creado_en.replace(' ', 'T')).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' });
+                  html += `<tr>
+                      <td>${fechaHora}</td>
+                      <td>${fila.usuario}</td>
+                      <td>${etiquetaAccion(fila.accion)}</td>
+                      <td>Tabla ${fila.tabla_num}<br><small>${fila.fecha}</small></td>
+                      <td>${fila.hoyo}</td>
+                      <td>${formatearDiferencias(fila.valores_anteriores, fila.valores_nuevos)}</td>
+                  </tr>`;
+              });
+
+              html += '</tbody></table>';
+              resultadoHistorial.innerHTML = html;
+          } catch (err) {
+              resultadoHistorial.innerHTML = `<p class="error-mensaje" style="display:block;">${err.message}</p>`;
+          }
+      }
+
+      btnBuscarHistorial.addEventListener('click', buscarHistorial);
+
+      // =========================================================================================
+      // SOCIOS (solo Administradores para crear/eliminar; el autocompletado en
+      // las celdas de Jugador funciona para cualquier operador con sesión)
+      // =========================================================================================
+      const CANTIDAD_FILAS_SOCIO_INICIAL = 5;
+
+      function crearFilaSocioVacia() {
+          const fila = document.createElement('div');
+          fila.className = 'fila-socio-nueva';
+          fila.innerHTML = `
+              <div class="grupo-input"><label>Nombre*</label><input type="text" class="input-socio-nombre" placeholder="Ej. Juan"></div>
+              <div class="grupo-input"><label>Segundo nombre</label><input type="text" class="input-socio-segundo" placeholder="Opcional"></div>
+              <div class="grupo-input"><label>Apellido(s)*</label><input type="text" class="input-socio-apellido" placeholder="Ej. Pérez López"></div>
+              <button type="button" class="btn-quitar-fila-socio" title="Quitar esta fila">✕</button>
+          `;
+          fila.querySelector('.btn-quitar-fila-socio').addEventListener('click', () => fila.remove());
+          return fila;
+      }
+
+      function reiniciarFilasSocios() {
+          filasNuevosSocios.innerHTML = '';
+          for (let i = 0; i < CANTIDAD_FILAS_SOCIO_INICIAL; i++) {
+              filasNuevosSocios.appendChild(crearFilaSocioVacia());
+          }
+      }
+
+      btnAgregarFilaSocio.addEventListener('click', () => {
+          filasNuevosSocios.appendChild(crearFilaSocioVacia());
+      });
+
+      btnAbrirSocios.addEventListener('click', () => {
+          if (rolActual !== 'admin') { return; }
+          msgErrorSocios.style.display = 'none';
+          msgExitoSocios.style.display = 'none';
+          txtFiltrarSocios.value = '';
+          reiniciarFilasSocios();
+          modalSocios.style.display = 'flex';
+          renderListaSocios();
+      });
+      btnCerrarSocios.addEventListener('click', () => { modalSocios.style.display = 'none'; });
+
+      btnGuardarSocios.addEventListener('click', async () => {
+          const filas = Array.from(filasNuevosSocios.querySelectorAll('.fila-socio-nueva'));
+          const socios = filas.map(fila => ({
+              primer_nombre: fila.querySelector('.input-socio-nombre').value.trim(),
+              segundo_nombre: fila.querySelector('.input-socio-segundo').value.trim(),
+              apellidos: fila.querySelector('.input-socio-apellido').value.trim()
+          })).filter(s => s.primer_nombre || s.segundo_nombre || s.apellidos); // ignora filas totalmente vacías
+
+          msgErrorSocios.style.display = 'none';
+          msgExitoSocios.style.display = 'none';
+
+          if (!socios.length) {
+              msgErrorSocios.textContent = 'Agrega al menos un socio antes de guardar.';
+              msgErrorSocios.style.display = 'block';
+              return;
+          }
+
+          const filaIncompleta = socios.some(s => !s.primer_nombre || !s.apellidos);
+          if (filaIncompleta) {
+              msgErrorSocios.textContent = 'Cada fila con datos necesita al menos Nombre y Apellido(s).';
+              msgErrorSocios.style.display = 'block';
+              return;
+          }
+
+          try {
+              const resp = await apiFetch('socios.php', { method: 'POST', body: JSON.stringify({ socios }) });
+              msgExitoSocios.textContent = `¡${resp.insertados} socio(s) guardado(s) correctamente!`;
+              msgExitoSocios.style.display = 'block';
+              reiniciarFilasSocios();
+              renderListaSocios();
+          } catch (err) {
+              msgErrorSocios.textContent = err.message;
+              msgErrorSocios.style.display = 'block';
+          }
+      });
+
+      let sociosCache = [];
+
+      async function renderListaSocios() {
+          try {
+              const resp = await apiFetch('socios.php');
+              sociosCache = resp.data;
+              pintarListaSociosFiltrada();
+          } catch (err) {
+              listaSociosRegistrados.innerHTML = `<p class="error-mensaje" style="display:block;">${err.message}</p>`;
+          }
+      }
+
+      function pintarListaSociosFiltrada() {
+          const filtro = txtFiltrarSocios.value.trim().toLowerCase();
+          const filtrados = filtro
+              ? sociosCache.filter(s => s.nombre_completo.toLowerCase().includes(filtro))
+              : sociosCache;
+
+          if (!filtrados.length) {
+              listaSociosRegistrados.innerHTML = '<p class="aviso-sin-datos-consulta">Sin socios registrados con ese filtro.</p>';
+              return;
+          }
+
+          listaSociosRegistrados.innerHTML = `<table class="tabla-historial"><thead><tr>
+              <th>Nombre completo</th><th></th>
+          </tr></thead><tbody>` +
+              filtrados.map(s => `<tr>
+                  <td>${s.nombre_completo}</td>
+                  <td><button type="button" class="btn-eliminar-usuario btn-eliminar-socio" data-id="${s.id}">Eliminar</button></td>
+              </tr>`).join('') +
+              '</tbody></table>';
+
+          listaSociosRegistrados.querySelectorAll('.btn-eliminar-socio').forEach(btn => {
+              btn.addEventListener('click', async () => {
+                  const confirmado = await confirmarAccion({
+                      titulo: '¿Eliminar socio?',
+                      mensaje: 'Se eliminará permanentemente de la lista.',
+                      icono: '🗑️',
+                      textoConfirmar: 'Eliminar',
+                      peligro: true
+                  });
+                  if (!confirmado) return;
+                  try {
+                      await apiFetch(`socios.php?id=${btn.getAttribute('data-id')}`, { method: 'DELETE' });
+                      renderListaSocios();
+                  } catch (err) {
+                      alert('Error: ' + err.message);
+                  }
+              });
+          });
+      }
+
+      txtFiltrarSocios.addEventListener('input', pintarListaSociosFiltrada);
+
+      // -----------------------------------------------------------------------------------------
+      // AUTOCOMPLETADO EN LAS CELDAS DE JUGADOR
+      // Las celdas editables ahora son <span class="valor-editable" contenteditable>, dentro de
+      // un <td>, no el <td> mismo. El cuadro de sugerencias se crea una sola vez, se posiciona
+      // con JS justo debajo del span activo, y se llena vía buscar_socios.php (disponible para
+      // cualquier operador con sesión, no solo administradores). Se usa delegación de eventos
+      // sobre el contenedor de cada tabla porque las filas se recrean por completo cada vez que
+      // cargarSalidas() refresca.
+      // -----------------------------------------------------------------------------------------
+      const cajaSugerenciasSocios = document.createElement('div');
+      cajaSugerenciasSocios.id = 'cajaSugerenciasSocios';
+      document.body.appendChild(cajaSugerenciasSocios);
+
+      let debounceSociosTimer = null;
+      let celdaSugerenciasActiva = null;
+
+      function ocultarSugerenciasSocios() {
+          cajaSugerenciasSocios.style.display = 'none';
+          celdaSugerenciasActiva = null;
+      }
+
+      function posicionarCajaSugerenciasSocios(celda) {
+          const rect = celda.getBoundingClientRect();
+          cajaSugerenciasSocios.style.left = `${rect.left + window.scrollX}px`;
+          cajaSugerenciasSocios.style.top = `${rect.bottom + window.scrollY + 2}px`;
+          cajaSugerenciasSocios.style.width = `${Math.max(rect.width, 180)}px`;
+      }
+
+      async function buscarYMostrarSugerenciasSocios(celda, texto) {
+          if (!texto || texto.trim().length < 2) { ocultarSugerenciasSocios(); return; }
+          try {
+              const { data } = await apiFetch(`buscar_socios.php?q=${encodeURIComponent(texto.trim())}`);
+              if (!data.length) { ocultarSugerenciasSocios(); return; }
+
+              celdaSugerenciasActiva = celda;
+              cajaSugerenciasSocios.innerHTML = data.map(s =>
+                  `<div class="opcion-sugerencia-socio" data-nombre="${s.nombre_completo.replace(/"/g, '&quot;')}">${s.nombre_completo}</div>`
+              ).join('');
+              posicionarCajaSugerenciasSocios(celda);
+              cajaSugerenciasSocios.style.display = 'block';
+          } catch (err) {
+              ocultarSugerenciasSocios();
+          }
+      }
+
+      // mousedown (no click) para que dispare ANTES del blur/focusout de la celda,
+      // así la celda no pierde el texto seleccionado antes de reemplazarlo.
+      cajaSugerenciasSocios.addEventListener('mousedown', (e) => {
+          const opcion = e.target.closest('.opcion-sugerencia-socio');
+          if (!opcion || !celdaSugerenciasActiva) return;
+          e.preventDefault();
+          celdaSugerenciasActiva.textContent = opcion.getAttribute('data-nombre');
+          ocultarSugerenciasSocios();
+      });
+
+      document.querySelectorAll('.tabla-contenedor-scroll').forEach(contenedor => {
+          contenedor.addEventListener('input', (e) => {
+              const celda = e.target.closest('.col-jugador .valor-editable');
+              if (!celda || celda.getAttribute('contenteditable') !== 'true') return;
+              clearTimeout(debounceSociosTimer);
+              debounceSociosTimer = setTimeout(() => buscarYMostrarSugerenciasSocios(celda, celda.textContent), 250);
+          });
+
+          // focusout SÍ burbujea (blur no), por eso se usa aquí para delegación.
+          contenedor.addEventListener('focusout', (e) => {
+              const celda = e.target.closest && e.target.closest('.col-jugador .valor-editable');
+              if (!celda) return;
+              setTimeout(ocultarSugerenciasSocios, 150); // da tiempo a que el mousedown de la sugerencia se registre primero
+          });
+      });
+
+      window.addEventListener('scroll', ocultarSugerenciasSocios, true);
+
+      // =========================================================================================
+      // NOTICIAS (footer dinámico) — disponible para operadores Y administradores
+      // Modelo igual al de "Config. Fecha/Hora": se guarda en el servidor
+      // (tabla config_noticia_footer, vía guardar_noticia.php) y se sondea cada
+      // pocos segundos con obtener_noticia.php para que se sincronice en todos
+      // los dispositivos, incluyendo pantallas en modo kiosco sin sesión.
+      // =========================================================================================
+      function aplicarFooterNoticia(activa, texto) {
+          noticiaActiva = !!activa;
+          noticiaTexto = texto || '';
+          actualizarVisibilidadFooterConClima();
+      }
+
+      // =========================================================================================
+      // CLIMA SEVERO: alerta automática + animación del footer
+      // Clasifica el weathercode de Open-Meteo en una categoría visual y decide,
+      // junto con la noticia manual, si el footer debe mostrarse y con qué texto.
+      // La alerta de clima severo se muestra SIEMPRE que exista (aunque nadie haya
+      // activado una noticia manual), porque es información de seguridad operativa.
+      // =========================================================================================
+      function categoriaClimaPorCodigo(codigo) {
+          const severo   = [95, 96, 99];
+          const nieve    = [71, 72, 73, 74, 75, 76, 77, 85, 86];
+          const lluvioso = [61, 62, 63, 64, 65, 66, 67, 80, 81, 82];
+          const llovizna = [51, 52, 53, 54, 55, 56, 57];
+          const niebla   = [45, 48];
+          const soleado  = [0, 1];
+          const nublado  = [2, 3];
+          if (severo.includes(codigo))   return 'severo';
+          if (nieve.includes(codigo))    return 'nieve';
+          if (lluvioso.includes(codigo)) return 'lluvioso';
+          if (llovizna.includes(codigo)) return 'llovizna';
+          if (niebla.includes(codigo))   return 'niebla';
+          if (soleado.includes(codigo))  return 'soleado';
+          if (nublado.includes(codigo))  return 'nublado';
+          return 'nublado'; // categoría por defecto para códigos no contemplados
+      }
+
+      const CATEGORIAS_CLIMA_FOOTER = ['soleado', 'nublado', 'niebla', 'llovizna', 'lluvioso', 'nieve', 'severo'];
+
+      function aplicarVideoClimaFooter(categoria) {
+          const archivo = VIDEOS_CLIMA[categoria] || VIDEOS_CLIMA.nublado;
+          // Solo se cambia el src (y se reinicia la reproducción) si la
+          // categoría realmente cambió; si no, cargarClima() reasignaría el
+          // mismo video cada 15 minutos y se vería un corte/parpadeo innecesario.
+          if (videoClimaFooter.getAttribute('data-categoria-actual') === categoria) return;
+          videoClimaFooter.setAttribute('data-categoria-actual', categoria);
+          videoClimaFooter.src = archivo;
+          videoClimaFooter.load();
+          videoClimaFooter.play().catch(() => {});
+      }
+
+      function aplicarCategoriaClimaFooter(categoria) {
+          footerNoticias.classList.remove(...CATEGORIAS_CLIMA_FOOTER.map(c => `footer-clima-${c}`));
+          footerNoticias.classList.add(`footer-clima-${categoria}`);
+          aplicarVideoClimaFooter(categoria);
+          climaCategoriaActual = categoria;
+          actualizarVisibilidadFooterConClima();
+      }
+
+      function actualizarVisibilidadFooterConClima() {
+          const hayNoticiaTexto = noticiaActiva && noticiaTexto.trim() !== '';
+          const esSevero = climaCategoriaActual === 'severo';
+          const debeMostrarse = hayNoticiaTexto || esSevero;
+
+          let textoMostrado = noticiaTexto;
+          if (esSevero) {
+              textoMostrado = '⚠️ Alerta de clima severo en la zona.';
+              if (hayNoticiaTexto) textoMostrado += '  •  ' + noticiaTexto;
+          }
+          footerNoticiasTexto.textContent = textoMostrado;
+
+          footerNoticias.classList.toggle('visible', debeMostrarse);
+          document.body.classList.toggle('con-footer-noticias', debeMostrarse);
+          document.body.classList.toggle('alerta-clima-severo', esSevero && debeMostrarse);
+          // El indicador del botón "Noticias" solo refleja la noticia manual,
+          // no la alerta automática de clima, para no confundir ambas cosas.
+          btnAbrirNoticias.classList.toggle('activa-indicador', hayNoticiaTexto);
+      }
+
+      async function cargarNoticiaDesdeServidor() {
+          try {
+              const { data } = await apiFetch('obtener_noticia.php');
+              aplicarFooterNoticia(data.activa, data.texto);
+
+              // El servidor es la fuente de verdad para la ubicación del clima;
+              // si trae valores, sobrescriben el default local.
+              if (data.clima_ciudad) climaCiudad = data.clima_ciudad;
+              if (typeof data.clima_lat === 'number' && !Number.isNaN(data.clima_lat)) climaLat = data.clima_lat;
+              if (typeof data.clima_lon === 'number' && !Number.isNaN(data.clima_lon)) climaLon = data.clima_lon;
+              footerNoticiasClima.title = climaCiudad;
+          } catch (err) {
+              console.error('No se pudo cargar la noticia del footer:', err);
+          }
+      }
+
+      btnAbrirNoticias.addEventListener('click', () => {
+          msgErrorNoticia.style.display = 'none';
+          msgExitoNoticia.style.display = 'none';
+          chkNoticiaActiva.checked = noticiaActiva;
+          txtNoticiaContenido.value = noticiaTexto;
+          txtClimaCiudad.value = climaCiudad;
+          resultadosClimaBusqueda.innerHTML = '';
+          modalNoticias.style.display = 'flex';
+      });
+      btnCerrarNoticias.addEventListener('click', () => { modalNoticias.style.display = 'none'; });
+
+      formNoticia.addEventListener('submit', async (e) => {
+          e.preventDefault();
+
+          const activa = chkNoticiaActiva.checked;
+          const texto = txtNoticiaContenido.value.trim();
+          msgErrorNoticia.style.display = 'none';
+          msgExitoNoticia.style.display = 'none';
+
+          if (activa && texto === '') {
+              msgErrorNoticia.textContent = 'Escribe un texto antes de activar el footer.';
+              msgErrorNoticia.style.display = 'block';
+              return;
+          }
+
+          try {
+              await apiFetch('guardar_noticia.php', {
+                  method: 'POST',
+                  body: JSON.stringify({
+                      activa, texto,
+                      clima_ciudad: climaCiudad,
+                      clima_lat: climaLat,
+                      clima_lon: climaLon
+                  })
+              });
+              aplicarFooterNoticia(activa, texto);
+              footerNoticiasClima.title = climaCiudad;
+              cargarClima();
+              msgExitoNoticia.style.display = 'block';
+              setTimeout(() => { modalNoticias.style.display = 'none'; }, 900);
+          } catch (err) {
+              msgErrorNoticia.textContent = err.message;
+              msgErrorNoticia.style.display = 'block';
+          }
+      });
+
+      // =========================================================================================
+      // CLIMA EN LA ESQUINA DEL FOOTER
+      // Usa Open-Meteo (gratuito, sin API key, con CORS habilitado) directamente desde el
+      // navegador: geocoding-api para buscar la ciudad elegida en el modal de Noticias, y
+      // api.open-meteo.com/v1/forecast para el clima actual de las coordenadas guardadas.
+      // La ubicación (ciudad + lat/lon) se guarda junto con la noticia en config_noticia_footer,
+      // así que se sincroniza en todas las pantallas igual que el resto del footer.
+      // =========================================================================================
+      const ICONOS_CLIMA = {
+          0: '☀️', 1: '🌤️', 2: '⛅', 3: '☁️',
+          45: '🌫️', 48: '🌫️',
+          51: '🌦️', 53: '🌦️', 55: '🌦️',
+          56: '🌧️', 57: '🌧️',
+          61: '🌧️', 63: '🌧️', 65: '🌧️',
+          66: '🌧️', 67: '🌧️',
+          71: '🌨️', 73: '🌨️', 75: '🌨️', 77: '🌨️',
+          80: '🌧️', 81: '🌧️', 82: '⛈️',
+          85: '🌨️', 86: '🌨️',
+          95: '⛈️', 96: '⛈️', 99: '⛈️'
+      };
+
+      btnBuscarClima.addEventListener('click', async () => {
+          const consulta = txtClimaCiudad.value.trim();
+          if (!consulta) { return; }
+
+          resultadosClimaBusqueda.innerHTML = '<p style="font-size:0.8rem;color:#777;padding:6px 0;">Buscando...</p>';
+
+          try {
+              const resp = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(consulta)}&count=5&language=es`);
+              const data = await resp.json();
+              const lugares = data.results || [];
+
+              if (!lugares.length) {
+                  resultadosClimaBusqueda.innerHTML = '<p style="font-size:0.8rem;color:#777;padding:6px 0;">Sin resultados. Intenta con otro nombre.</p>';
+                  return;
+              }
+
+              resultadosClimaBusqueda.innerHTML = lugares.map((l, i) => {
+                  const partes = [l.name, l.admin1, l.country].filter(Boolean);
+                  return `<button type="button" class="btn-exportar" data-idx="${i}" style="display:block;width:100%;text-align:left;border-radius:6px;margin-bottom:6px;">📍 ${partes.join(', ')}</button>`;
+              }).join('');
+
+              resultadosClimaBusqueda.querySelectorAll('button[data-idx]').forEach(btn => {
+                  btn.addEventListener('click', () => {
+                      const l = lugares[Number(btn.getAttribute('data-idx'))];
+                      climaCiudad = [l.name, l.admin1, l.country].filter(Boolean).join(', ');
+                      climaLat = l.latitude;
+                      climaLon = l.longitude;
+                      txtClimaCiudad.value = climaCiudad;
+                      resultadosClimaBusqueda.innerHTML = `<p style="font-size:0.8rem;color:#2e7d32;padding:6px 0;">✓ Ubicación seleccionada: ${climaCiudad}</p>`;
+                  });
+              });
+          } catch (err) {
+              resultadosClimaBusqueda.innerHTML = '<p class="error-mensaje" style="display:block;">No se pudo buscar la ubicación.</p>';
+          }
+      });
+
+      async function cargarClima() {
+          try {
+              const url = `https://api.open-meteo.com/v1/forecast?latitude=${climaLat}&longitude=${climaLon}&current=temperature_2m,weathercode&timezone=America%2FMexico_City`;
+              const resp = await fetch(url);
+              const data = await resp.json();
+              const temp = Math.round(data.current.temperature_2m);
+              const codigo = data.current.weathercode;
+              climaIcono.textContent = ICONOS_CLIMA[codigo] || '🌡️';
+              climaTemp.textContent = `${temp}°C`;
+              footerNoticiasClima.title = climaCiudad;
+
+              aplicarCategoriaClimaFooter(categoriaClimaPorCodigo(codigo));
+          } catch (err) {
+              console.error('No se pudo cargar el clima:', err);
+          }
+      }
+
+      // =========================================================================================
+      // CONFIGURACIÓN MANUAL DE FECHA/HORA POR TABLA
+      // Ahora se guarda en el servidor (tabla config_hora_tablas) mediante
+      // guardar_config_hora.php / obtener_config_hora.php, para que el ajuste hecho en
+      // un dispositivo se refleje en cualquier otro que consulte la página.
+      // =========================================================================================
+      function obtenerOffsetTabla(numTabla) {
+          return offsetsHora[numTabla] || 0;
+      }
+
+      function obtenerFechaVirtualTabla(numTabla) {
+          return new Date(Date.now() + obtenerOffsetTabla(numTabla));
+      }
+
+      async function cargarConfigHoraDesdeServidor() {
+          try {
+              const { data } = await apiFetch('obtener_config_hora.php');
+              offsetsHora = {
+                  '1': Number(data['1']) || 0,
+                  '2': Number(data['2']) || 0
+              };
+          } catch (err) {
+              console.error('No se pudo cargar la configuración de hora:', err);
+          }
+      }
+
+      botonesConfigHora.forEach(btn => {
+          btn.addEventListener('click', () => {
+              tablaConfigurandoHora = btn.getAttribute('data-tabla');
+              document.getElementById('tituloModalHora').textContent = `Configurar Fecha y Hora - Tabla ${tablaConfigurandoHora}`;
+
+              const fechaVirtual = obtenerFechaVirtualTabla(tablaConfigurandoHora);
+              const yyyy = fechaVirtual.getFullYear();
+              const mm = String(fechaVirtual.getMonth() + 1).padStart(2, '0');
+              const dd = String(fechaVirtual.getDate()).padStart(2, '0');
+              const hh = String(fechaVirtual.getHours()).padStart(2, '0');
+              const min = String(fechaVirtual.getMinutes()).padStart(2, '0');
+
+              document.getElementById('inputFechaManual').value = `${yyyy}-${mm}-${dd}`;
+              document.getElementById('inputHoraManual').value = `${hh}:${min}`;
+
+              modalHora.style.display = 'flex';
+          });
+      });
+
+      btnCerrarHora.addEventListener('click', () => { modalHora.style.display = 'none'; });
+
+      formHora.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          if (!tablaConfigurandoHora) return;
+
+          const valorFecha = document.getElementById('inputFechaManual').value;
+          const valorHora = document.getElementById('inputHoraManual').value;
+
+          try {
+              await apiFetch('guardar_config_hora.php', {
+                  method: 'POST',
+                  body: JSON.stringify({
+                      tabla_num: Number(tablaConfigurandoHora),
+                      fecha: valorFecha,
+                      hora: valorHora
+                  })
+              });
+              await cargarConfigHoraDesdeServidor();
+              modalHora.style.display = 'none';
+              actualizarTablaTiempo(tablaConfigurandoHora);
+              tablaConfigurandoHora = null;
+          } catch (err) {
+              alert('Error al aplicar la fecha/hora: ' + err.message);
+          }
+      });
+
+      function obtenerHoraActual24ConAMPM(fecha) {
+          const horas = fecha.getHours();
+          const minutos = String(fecha.getMinutes()).padStart(2, '0');
+          const ampm = horas >= 12 ? 'PM' : 'AM';
+          const horasFormateadas = String(horas).padStart(2, '0');
+          return `${horasFormateadas}:${minutos} ${ampm}`;
+      }
+
+      // Solo actualiza el reloj digital y la fecha central de cada tabla.
+      // La columna "Detalles" ya NO se sobrescribe: ahora es un campo de notas
+      // libres que viene de la base de datos.
+      function actualizarTablaTiempo(numTabla) {
+          const cfg = configTablas[numTabla];
+          const fechaVirtual = obtenerFechaVirtualTabla(numTabla);
+          const stringHora = obtenerHoraActual24ConAMPM(fechaVirtual);
+
+          document.getElementById(cfg.idReloj).textContent = stringHora;
+
+          const opcionesFecha = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+          let stringFecha = fechaVirtual.toLocaleDateString('es-ES', opcionesFecha);
+          stringFecha = stringFecha.charAt(0).toUpperCase() + stringFecha.slice(1).replace(',', '');
+          document.getElementById(cfg.idFecha).textContent = stringFecha;
+      }
+
+      function actualizarTodasLasTablas() {
+          Object.keys(configTablas).forEach(numTabla => actualizarTablaTiempo(numTabla));
+      }
+
+      // =========================================================================================
+      // AUTO-REFRESCO: vuelve a pedir las salidas cada cierto tiempo para que los cambios
+      // hechos desde OTRO dispositivo/pantalla se reflejen aquí sin recargar manualmente.
+      // Se salta el refresco si el usuario está escribiendo dentro de una celda editable en
+      // este momento, para no interrumpirlo ni perder lo que está capturando. También se
+      // salta por completo mientras hay una sesión de edición activa (modoAdminActivo), ya
+      // que en ese caso el autoguardado se encarga de mantener todo sincronizado sin
+      // arriesgarse a sobrescribir cambios que aún no se han guardado.
+      // =========================================================================================
+      const INTERVALO_AUTO_REFRESCO_MS = 2000; // 2 segundos; ajusta si lo quieres más/menos frecuente
+      const INTERVALO_NOTICIA_MS = 5000; // 5 segundos; el footer no es tan urgente como las salidas
+      const INTERVALO_CLIMA_MS = 900000; // 15 minutos; el clima no cambia con esa rapidez
+
+      function hayEdicionEnCurso() {
+          const activo = document.activeElement;
+          return !!(activo && activo.closest && activo.closest('.tabla-salidas td .valor-editable[contenteditable="true"]'));
+      }
+
+      async function autoRefrescarSalidas() {
+          if (modoAdminActivo) return; // evita sobrescribir cambios mientras hay edición activa
+          if (hayEdicionEnCurso()) return; // no interrumpir a quien está escribiendo
+          await cargarSalidas();
+      }
+
+      // =========================================================================================
+      // DETECCIÓN DE CAMBIO DE DÍA EN PANTALLA
+      // fechaHoy/fechaManana se calculan UNA sola vez al cargar la página (son const). Si esta
+      // pantalla se queda abierta 24/7 (lo normal para un tablero de salidas) y nunca se
+      // recarga manualmente, seguiría pidiendo datos con la fecha de AYER para siempre después
+      // de cruzar la medianoche. Por eso se revisa cada cierto tiempo si la fecha local del
+      // navegador ya cambió, y si es así, se recarga la página sola para recalcular todo
+      // (fechaHoy, fechaManana, fechaPorTabla) desde cero. No se recarga si hay una sesión de
+      // edición activa, para no interrumpir a quien está capturando en ese momento.
+      // =========================================================================================
+      function revisarCambioDeDia() {
+          if (modoAdminActivo) return; // no recargar mientras alguien está editando
+          if (obtenerFechaLocalISO() !== fechaHoy) {
+              location.reload();
+          }
+      }
+
+      // =========================================================================================
+      // ARRANQUE
+      // =========================================================================================
+      const modoKiosco = document.documentElement.classList.contains('modo-kiosco');
+
+      // =========================================================================================
+      // PANTALLA COMPLETA
+      // Necesario porque navegadores como Samsung Internet no traen un botón
+      // directo de pantalla completa, y en una TV de 55" la barra del
+      // navegador ocupa espacio útil. Por seguridad del navegador, entrar a
+      // pantalla completa SIEMPRE requiere una interacción del usuario (no se
+      // puede activar solo al cargar la página) — por eso el botón.
+      // Ahora el botón se muestra SIEMPRE (modo kiosco/TV y vista normal de
+      // administración), fijo en la esquina superior IZQUIERDA para no
+      // encimarse nunca con "Iniciar Sesión" ni con el resto de botones del
+      // panel admin (que viven a la derecha).
+      // =========================================================================================
+      const btnPantallaCompleta = document.getElementById('btnPantallaCompleta');
+
+      function elementoEnPantallaCompleta() {
+          return !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
+      }
+
+      function solicitarPantallaCompleta() {
+          const el = document.documentElement;
+          const solicitar = el.requestFullscreen || el.webkitRequestFullscreen || el.webkitRequestFullScreen || el.msRequestFullscreen;
+          if (solicitar) { solicitar.call(el).catch(() => {}); }
+      }
+
+      function salirDePantallaCompleta() {
+          const salir = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
+          if (salir) { salir.call(document); }
+      }
+
+      function actualizarTextoBotonPantallaCompleta() {
+          if (!btnPantallaCompleta) return;
+          btnPantallaCompleta.textContent = elementoEnPantallaCompleta()
+              ? '🗗 Salir'
+              : '⛶ Pantalla Completa';
+      }
+
+      if (btnPantallaCompleta) {
+          btnPantallaCompleta.addEventListener('click', () => {
+              if (elementoEnPantallaCompleta()) { salirDePantallaCompleta(); } else { solicitarPantallaCompleta(); }
+          });
+
+          ['fullscreenchange', 'webkitfullscreenchange', 'msfullscreenchange'].forEach(evento => {
+              document.addEventListener(evento, actualizarTextoBotonPantallaCompleta);
+          });
+
+          actualizarTextoBotonPantallaCompleta();
+      }
+
+      window.addEventListener('DOMContentLoaded', async () => {
+          // Refuerza el autoplay de los logos en video: algunos navegadores
+          // (sobre todo en TV) no lo disparan solos aunque tengan el atributo.
+          document.querySelectorAll('.video-fondo-superior').forEach(video => {
+              video.play().catch(() => {});
+          });
+
+          // El gate de login se muestra de inmediato (excepto en modo kiosco,
+          // donde queda oculto siempre): así nadie ve ni edita las tablas antes
+          // de que restaurarSesion() confirme si ya hay una sesión válida. Si
+          // la hay, aplicarSesionUI(user) lo oculta; si no, se queda visible.
+          if (modoKiosco) {
+              ocultarLoginGate();
+          } else {
+              mostrarLoginGate();
+          }
+
+          await cargarConfigHoraDesdeServidor();
+          actualizarTodasLasTablas();
+          // En modo kiosco NO se restaura la sesión, aunque exista una cookie
+          // activa en ese dispositivo: la pantalla debe quedar de solo
+          // lectura sin excepción (sin botones, sin celdas editables).
+          if (!modoKiosco) { await restaurarSesion(); }
+          await cargarSalidas();
+          // El footer de noticias se carga siempre, con o sin sesión y también
+          // en modo kiosco, porque es información pública para los visitantes.
+          await cargarNoticiaDesdeServidor();
+          // El clima se pide DESPUÉS de la noticia, para ya tener la ciudad/lat/lon
+          // que el servidor tenga guardadas (o el default si nadie lo ha configurado).
+          await cargarClima();
+      });
+
+      setInterval(actualizarTodasLasTablas, 1000);
+      setInterval(autoRefrescarSalidas, INTERVALO_AUTO_REFRESCO_MS);
+      setInterval(autoguardarTodasLasTablas, INTERVALO_AUTOGUARDADO_MS);
+      // Revisa cada 2s si otro dispositivo cambió la fecha/hora configurada de alguna tabla.
+      setInterval(cargarConfigHoraDesdeServidor, INTERVALO_AUTO_REFRESCO_MS);
+      // Revisa cada 5s si otro dispositivo activó/editó/apagó el footer de noticias (y la ciudad del clima).
+      setInterval(cargarNoticiaDesdeServidor, INTERVALO_NOTICIA_MS);
+      // Refresca la temperatura cada 15 minutos.
+      setInterval(cargarClima, INTERVALO_CLIMA_MS);
+      // Revisa cada 30s si ya cruzamos la medianoche en esta pantalla, para recargar sola.
+      setInterval(revisarCambioDeDia, 30000);
+  </script>
+
+  <script src="js/vendor/modernizr-3.11.2.min.js"></script>
+  <script src="js/plugins.js"></script>
+  <script src="js/main.js"></script>
+</body>
+
+</html>

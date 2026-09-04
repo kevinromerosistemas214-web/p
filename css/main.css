@@ -1,0 +1,573 @@
+html {
+  color: #222;
+  font-size: 1em;
+  line-height: 1.4;
+}
+
+::-moz-selection {
+  background: #b3d4fc;
+  text-shadow: none;
+}
+
+::selection {
+  background: #b3d4fc;
+  text-shadow: none;
+}
+
+hr {
+  display: block;
+  height: 1px;
+  border: 0;
+  border-top: 1px solid #ccc;
+  margin: 1em 0;
+  padding: 0;
+}
+
+audio,
+canvas,
+iframe,
+img,
+svg,
+video {
+  vertical-align: middle;
+}
+
+fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+textarea {
+  resize: vertical;
+}
+/* Variables globales: Paleta de colores oficial e identidad del Club */
+:root {
+    --verde-primario: #113426; /* Verde bosque profundo */
+    --verde-hover: #1b4d39;    /* Variante clara para efectos hover */
+    --dorado: #bc9c57;         /* Tono dorado / Arena de golf */
+    --dorado-claro: #f4efe2;   /* Fondo crema sutil para contraste */
+    --oscuro: #1c1c1c;         /* Color principal del texto */
+    --gris-fondo: #f5f6f7;     /* Fondo general de la aplicación */
+    --blanco: #ffffff;
+    --borde: #e2e8f0;          /* Gris claro para separadores de celdas */
+}
+
+body {
+    font-family: 'Montserrat', sans-serif;
+    background-color: var(--gris-fondo);
+    color: var(--oscuro);
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+    min-height: 100vh;
+}
+
+/* Contenedor principal estilo marquesina o tablero premium */
+.pantalla-contenedor {
+    width: 100%;
+    max-width: 1350px;
+    background-color: var(--blanco);
+    border: 4px solid var(--verde-primario); 
+    border-top: 12px solid var(--verde-primario); /* Realce superior institucional */
+    border-radius: 12px;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.12);
+    padding: 30px 25px;
+    margin-bottom: 20px;
+    position: relative;
+}
+
+/* Reloj digital superior */
+.barra-reloj {
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+.reloj-digital {
+    background-color: var(--verde-primario);
+    color: var(--dorado);
+    border: 1px solid var(--dorado);
+    padding: 6px 20px;
+    font-size: 0.95rem;
+    font-weight: bold;
+    letter-spacing: 1.5px;
+    border-radius: 30px;
+    display: inline-block;
+    box-shadow: 0 4px 10px rgba(17, 52, 38, 0.25);
+}
+
+/* Encabezado del Tablero */
+.encabezado {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 2px solid var(--dorado-claro);
+    padding-bottom: 25px;
+    margin-bottom: 25px;
+}
+
+.logo-club {
+    flex: 1;
+    display: flex;
+    align-items: center;
+}
+
+.logo-club-img {
+    width: 320px;
+    height: 320px;
+    object-fit: contain;
+    filter: drop-shadow(0px 4px 8px rgba(0,0,0,0.12));
+    transition: transform 0.3s ease;
+}
+
+.logo-club-img:hover {
+    transform: scale(1.05);
+}
+
+.fecha-central {
+    flex: 2;
+    text-align: center;
+    font-family: 'Cinzel', serif; /* Tipografía clásica elegante */
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--verde-primario);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+}
+
+.bloque-derecho {
+    flex: 1;
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 15px;
+}
+
+.texto-info h2 {
+    font-family: 'Cinzel', serif;
+    font-size: 1.5rem;
+    color: var(--verde-primario);
+    font-weight: 800;
+    line-height: 1.2;
+    letter-spacing: 1px;
+}
+
+.texto-info p {
+    font-size: 0.85rem;
+    color: var(--dorado);
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+}
+
+.admin-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+/* Botones administrativos del Club */
+.btn-login, .btn-guardar, .btn-usuarios {
+    background-color: var(--verde-primario);
+    color: var(--blanco);
+    border: 1px solid var(--dorado);
+    padding: 8px 16px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+}
+
+.btn-login:hover { 
+    background-color: var(--verde-hover);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.btn-guardar { 
+    background-color: #2e7d32; 
+    border: 1px solid #1b5e20;
+    display: none; 
+}
+.btn-guardar:hover { 
+    background-color: #388e3c; 
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.btn-usuarios { 
+    background-color: var(--dorado); 
+    border: 1px solid var(--verde-primario);
+    color: var(--verde-primario);
+    display: none; 
+}
+.btn-usuarios:hover { 
+    background-color: #a88849; 
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.usuario-logeado {
+    font-size: 0.8rem;
+    color: var(--verde-primario);
+    font-weight: bold;
+    background-color: var(--dorado-claro);
+    padding: 6px 12px;
+    border-radius: 4px;
+    border: 1px solid var(--dorado);
+    display: none;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.usuario-logeado:hover {
+    background-color: #ebdcb9;
+}
+
+/* Modales de Interfaz */
+.modal-login, .modal-usuarios {
+    display: none; 
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    backdrop-filter: blur(3px);
+}
+
+.modal-contenido {
+    background-color: var(--blanco);
+    padding: 30px;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 360px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    position: relative;
+    border-top: 6px solid var(--verde-primario);
+}
+
+.modal-contenido h3 {
+    font-family: 'Cinzel', serif;
+    margin-bottom: 20px;
+    color: var(--verde-primario);
+    font-size: 1.3rem;
+    letter-spacing: 0.5px;
+}
+
+.grupo-input {
+    margin-bottom: 15px;
+}
+
+.grupo-input label {
+    display: block;
+    font-size: 0.75rem;
+    margin-bottom: 6px;
+    font-weight: 700;
+    color: var(--verde-primario);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.grupo-input input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--borde);
+    border-radius: 4px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 0.9rem;
+    transition: border-color 0.2s ease;
+}
+
+.grupo-input input:focus {
+    outline: none;
+    border-color: var(--verde-primario);
+}
+
+.btn-enviar-login, .btn-crear-user {
+    width: 100%;
+    background-color: var(--verde-primario);
+    color: var(--blanco);
+    border: 1px solid var(--dorado);
+    padding: 12px;
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-top: 10px;
+    transition: background-color 0.2s ease;
+}
+
+.btn-enviar-login:hover { background-color: var(--verde-hover); }
+.btn-crear-user { background-color: var(--dorado); color: var(--verde-primario); border: 1px solid var(--verde-primario); }
+.btn-crear-user:hover { background-color: #a88849; }
+
+.btn-cerrar-modal {
+    position: absolute;
+    top: 15px; right: 15px;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #999;
+    transition: color 0.2s ease;
+}
+
+.btn-cerrar-modal:hover { color: var(--verde-primario); }
+.error-mensaje, .exito-mensaje { font-size: 0.8rem; margin-top: 8px; display: none; font-weight: 600; }
+.error-mensaje { color: #d32f2f; }
+.exito-mensaje { color: #2e7d32; }
+
+/* Estilos de la Tabla (Vista de Escritorio Nativa) */
+.tabla-salidas {
+    display: table; /* RESTABLECIDO: Asegura comportamiento de tabla real */
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.02);
+}
+
+.tabla-salidas thead { display: table-header-group; }
+.tabla-salidas tbody { display: table-row-group; }
+.tabla-salidas tr { display: table-row; }
+
+.tabla-salidas th {
+    display: table-cell;
+    background-color: var(--verde-primario);
+    color: var(--blanco);
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 14px 10px;
+    border-bottom: 3px solid var(--dorado);
+    font-size: 0.78rem;
+    letter-spacing: 1px;
+}
+
+.tabla-salidas td {
+    display: table-cell; /* RESTABLECIDO: Comportamiento nativo de celda en escritorio */
+    padding: 12px 10px;
+    border-bottom: 1px solid var(--borde);
+    color: #333333;
+    transition: background-color 0.15s ease;
+    vertical-align: middle;
+}
+
+/* Configuración de anchos de columnas en escritorio */
+.col-hoyo { 
+    width: 5%; 
+    text-align: center; 
+    font-weight: 700; 
+    background-color: var(--dorado-claro) !important; 
+    color: var(--verde-primario);
+    border-right: 1px solid #e1d9c4;
+}
+
+.col-horario { width: 7%; text-align: center; font-weight: 700; color: var(--verde-primario); }
+.col-jugador { width: 14%; font-weight: 400; }
+.col-campo { width: 8%; text-align: center; font-weight: 600; text-transform: uppercase; font-size: 0.8rem; }
+.col-detalles { width: 10%; text-align: center; color: #555; font-weight: 600; }
+
+.tabla-salidas tr:nth-child(even) td:not(.col-hoyo) { background-color: #faf9f6; }
+.tabla-salidas tr:hover td:not(.col-hoyo) { background-color: #f1ebd9 !important; }
+
+/* Fila especial para Competencias Internas */
+.fila-competencia td {
+    background-color: #e5ede9 !important;
+    font-weight: 700;
+    color: var(--verde-primario);
+    letter-spacing: 0.5px;
+}
+
+/* Recuadros Editables (RESTABLECIDO: Sin inline-block para no dañar las celdas de PC) */
+.tabla-salidas td[contenteditable="true"] {
+    background-color: var(--blanco) !important;
+    border: 1.5px dashed var(--dorado) !important;
+    color: #000000 !important;
+    outline: none;
+    cursor: text;
+}
+
+.tabla-salidas td[contenteditable="true"]:focus {
+    background-color: var(--dorado-claro) !important;
+    border: 1.5px solid var(--verde-primario) !important;
+    box-shadow: inset 0 0 5px rgba(17, 52, 38, 0.15);
+}
+
+/* ==========================================================================
+   Clases de Utilidad (Helper classes)
+   ========================================================================== */
+
+.hidden, [hidden] { display: none !important; }
+
+.sr-only {
+  border: 0;
+  clip: rect(0, 0, 0, 0);
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
+
+.invisible { visibility: hidden; }
+
+/* ==========================================================================
+   Media Queries para diseño responsivo
+   ========================================================================== */
+
+@media (max-width: 1024px) {
+    body { padding: 10px; }
+    .encabezado { flex-direction: column; gap: 20px; text-align: center; padding-bottom: 20px; }
+    .logo-club, .bloque-derecho { justify-content: center; align-items: center; text-align: center; width: 100%; }
+    .admin-actions { justify-content: center; }
+    .fecha-central { font-size: 1.6rem; order: -1; }
+}
+
+/* ==========================================================================
+   VERSION MOBILE EXCLUSIVA (Afecta únicamente desde 768px hacia abajo)
+   ========================================================================== */
+@media (max-width: 768px) {
+    .pantalla-contenedor {
+        padding: 20px 15px;
+        border-width: 2px;
+        border-top-width: 8px;
+    }
+
+    .fecha-central { font-size: 1.3rem; }
+    .texto-info h2 { font-size: 1.2rem; }
+
+    /* Transformación estructural a bloques responsivos independientes (Tarjetas) */
+    .tabla-salidas, .tabla-salidas thead, .tabla-salidas tbody, .tabla-salidas th, .tabla-salidas td, .tabla-salidas tr {
+        display: block !important;
+    }
+
+    /* Ocultar la fila de encabezados nativos */
+    .tabla-salidas thead tr {
+        position: absolute;
+        top: -9999px;
+        left: -9999px;
+    }
+
+    /* Cada fila se convierte en una tarjeta independiente */
+    .tabla-salidas tr {
+        background: #ffffff;
+        border: 1px solid var(--borde);
+        border-radius: 8px;
+        margin-bottom: 20px;
+        padding: 0 0 10px 0; 
+        box-shadow: 0 4px 10px rgba(0,0,0,0.06);
+        overflow: hidden;
+        width: 100%;
+    }
+
+    .tabla-salidas tr:nth-child(even) td:not(.col-hoyo) {
+        background-color: transparent;
+    }
+
+    /* Formateo de celdas móviles con espacio fijo a la izquierda para labels */
+    .tabla-salidas td {
+        border: none;
+        border-bottom: 1px solid #f2f2f2;
+        position: relative;
+        padding: 12px 15px 12px 120px !important; 
+        text-align: left !important;
+        display: flex !important;
+        align-items: center;
+        min-height: 45px;
+        box-sizing: border-box;
+        width: 100% !important;
+    }
+
+    .tabla-salidas td:last-child {
+        border-bottom: none;
+    }
+
+    /* Inyección de los nombres de columna responsivos mediante data-label */
+    .tabla-salidas td::before {
+        position: absolute;
+        left: 15px;
+        width: 90px;
+        font-weight: 700;
+        color: var(--verde-primario);
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        content: attr(data-label);
+    }
+
+    /* CAMBIO MÓVIL: El número de hoyo se convierte en un banner verde a todo lo ancho */
+    .col-hoyo {
+        background-color: var(--verde-primario) !important;
+        color: var(--dorado) !important;
+        padding: 12px 15px !important;
+        font-size: 1.1rem;
+        border-right: none !important;
+        width: 100% !important; 
+        justify-content: center; 
+        border-radius: 0;
+        box-sizing: border-box;
+    }
+
+    /* Reajuste del texto "HOYO" dentro del banner responsivo */
+    .col-hoyo::before {
+        content: attr(data-label) !important;
+        color: var(--dorado) !important;
+        position: relative !important;
+        left: 0 !important;
+        width: auto !important;
+        margin-right: 8px;
+        font-size: 1.1rem !important;
+    }
+
+    /* CAMBIO MÓVIL: Fuerza a los campos editables a expandirse en todo el ancho móvil */
+    .tabla-salidas td[contenteditable="true"] {
+        display: block !important;
+        width: 100% !important;
+        padding: 8px !important;
+        margin: 4px 0;
+        box-sizing: border-box;
+    }
+
+    .fila-competencia {
+        background-color: #e5ede9 !important;
+        border: 2px solid var(--verde-primario);
+    }
+
+    .fila-competencia td {
+        padding: 12px !important;
+        justify-content: center;
+        text-align: center !important;
+    }
+
+    .fila-competencia td::before {
+        display: none;
+    }
+}
+
+/* ==========================================================================
+   Estilos de Impresión
+   ========================================================================== */
+@media print {
+  *, *::before, *::after {
+    background: #fff !important;
+    color: #000 !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+  a, a:visited { text-decoration: underline; }
+  a[href]::after { content: " (" attr(href) ")"; }
+  thead { display: table-header-group; }
+  tr, img { page-break-inside: avoid; }
+  p, h2, h3 { orphans: 3; widows: 3; }
+  h2, h3 { page-break-after: avoid; }
+  .logo-club-img { width: 110px; height: 110px; object-fit: contain; }
+}

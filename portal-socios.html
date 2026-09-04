@@ -1,0 +1,941 @@
+<!doctype html>
+<html class="no-js" lang="es">
+
+<head>
+  <meta charset="utf-8">
+  <title>Mis Reservas - Club de Golf San Carlos</title>
+  <meta name="description" content="Portal de socios: reserva y consulta tus horarios en el Club de Golf San Carlos.">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;800&family=Montserrat:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+  <meta name="theme-color" content="#113426">
+
+  <style>
+    :root {
+        --verde-primario: #113426;
+        --verde-oscuro: #091a13;
+        --verde-hover: #1b4d39;
+        --dorado: #bc9c57;
+        --dorado-brillante: #d4af37;
+        --dorado-claro: #f4efe2;
+        --oscuro: #1c1c1c;
+        --gris-fondo: #f5f6f7;
+        --blanco: #ffffff;
+        --borde: #e2e8f0;
+        --rojo: #c62828;
+        --verde-ok: #2e7d32;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body { height: 100%; }
+
+    body {
+        font-family: 'Montserrat', sans-serif;
+        background:
+            linear-gradient(160deg, rgba(238,241,239,0.95) 0%, rgba(245,246,247,0.92) 50%, rgba(238,242,238,0.95) 100%),
+            url('img/horizontes.jpg');
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
+        color: var(--oscuro);
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    /* =====================================================================
+       PANTALLA DE CARGA
+       Se muestra mientras se resuelve socio_sesion_actual.php, para no
+       parpadear entre "pantalla de acceso" y "app" en cada carga.
+       ===================================================================== */
+    .pantalla-carga {
+        position: fixed; inset: 0; z-index: 500;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        gap: 16px; background-color: var(--verde-oscuro); color: var(--dorado-claro);
+    }
+    .pantalla-carga.oculto { display: none; }
+    .spinner-carga {
+        width: 34px; height: 34px; border: 3px solid rgba(244,239,226,0.25);
+        border-top-color: var(--dorado); border-radius: 50%;
+        animation: girarSpinner 0.7s linear infinite;
+    }
+    @keyframes girarSpinner { to { transform: rotate(360deg); } }
+    .pantalla-carga p { font-size: 0.8rem; letter-spacing: 1px; text-transform: uppercase; }
+
+    /* =====================================================================
+       ENCABEZADO DE MARCA (compartido por gate de acceso y app)
+       ===================================================================== */
+    .marca-portal {
+        display: flex; align-items: center; gap: 12px; justify-content: center;
+        margin-bottom: 6px;
+    }
+    .marca-portal img { width: 46px; height: 46px; object-fit: contain; }
+    .marca-portal span {
+        font-family: 'Cinzel', serif; font-size: 1rem; font-weight: 700; color: var(--verde-primario);
+        letter-spacing: 1.2px; text-transform: uppercase; line-height: 1.25;
+    }
+
+    /* =====================================================================
+       GATE DE ACCESO (login / registro)
+       ===================================================================== */
+    .gate-acceso {
+        width: 100%; flex: 1; display: flex; align-items: center; justify-content: center;
+        padding: 28px 16px;
+    }
+    .gate-acceso.oculto { display: none; }
+
+    .tarjeta-acceso {
+        width: 100%; max-width: 420px; background: var(--blanco);
+        border: 1px solid var(--borde); border-top: 6px solid var(--verde-primario);
+        border-radius: 14px; box-shadow: 0 20px 45px rgba(17,52,38,0.14);
+        padding: 30px 26px;
+    }
+
+    .tabs-acceso {
+        display: flex; border: 1px solid var(--borde); border-radius: 10px;
+        overflow: hidden; margin-bottom: 22px;
+    }
+    .tab-acceso {
+        flex: 1; text-align: center; padding: 11px 8px; cursor: pointer;
+        font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px;
+        color: var(--verde-primario); background: var(--dorado-claro); transition: background-color 0.2s ease;
+        border: none; font-family: 'Montserrat', sans-serif;
+    }
+    .tab-acceso.activa { background: var(--verde-primario); color: var(--blanco); }
+
+    .panel-acceso { display: none; }
+    .panel-acceso.activo { display: block; }
+
+    .grupo-campo { margin-bottom: 16px; }
+    .grupo-campo label {
+        display: block; font-size: 0.72rem; font-weight: 700; color: var(--verde-primario);
+        text-transform: uppercase; letter-spacing: 0.7px; margin-bottom: 7px;
+    }
+    .grupo-campo input {
+        width: 100%; padding: 12px 13px; border: 1px solid var(--borde); border-radius: 8px;
+        font-family: 'Montserrat', sans-serif; font-size: 0.92rem; transition: border-color 0.2s ease;
+    }
+    .grupo-campo input:focus { outline: none; border-color: var(--verde-primario); }
+    .ayuda-campo { font-size: 0.72rem; color: #777; margin-top: 5px; line-height: 1.35; }
+
+    .btn-primario {
+        width: 100%; padding: 13px; background: var(--verde-primario); color: var(--blanco);
+        border: 1px solid var(--dorado); border-radius: 8px; font-family: 'Montserrat', sans-serif;
+        font-weight: 700; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 1px;
+        cursor: pointer; transition: background-color 0.2s ease, transform 0.15s ease;
+    }
+    .btn-primario:hover { background: var(--verde-hover); }
+    .btn-primario:active { transform: scale(0.98); }
+    .btn-primario:disabled { opacity: 0.55; cursor: not-allowed; }
+
+    .btn-secundario {
+        width: 100%; padding: 11px; background: var(--blanco); color: var(--verde-primario);
+        border: 1px solid var(--borde); border-radius: 8px; font-family: 'Montserrat', sans-serif;
+        font-weight: 700; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.8px;
+        cursor: pointer; margin-top: 10px; transition: background-color 0.2s ease;
+    }
+    .btn-secundario:hover { background: var(--dorado-claro); }
+
+    .mensaje-error, .mensaje-exito {
+        font-size: 0.8rem; font-weight: 600; margin-top: 4px; margin-bottom: 12px;
+        display: none; padding: 9px 11px; border-radius: 6px;
+    }
+    .mensaje-error { color: #b71c1c; background: #fdecea; display: none; }
+    .mensaje-exito { color: #1b5e20; background: #eaf5ea; display: none; }
+    .mensaje-error.visible, .mensaje-exito.visible { display: block; }
+
+    /* Buscador de nombre en registro */
+    .resultados-busqueda-socio {
+        margin-top: 6px; border: 1px solid var(--borde); border-radius: 8px;
+        max-height: 220px; overflow-y: auto; display: none;
+    }
+    .resultados-busqueda-socio.visible { display: block; }
+    .opcion-socio-encontrado {
+        padding: 11px 13px; cursor: pointer; border-bottom: 1px solid var(--borde); font-size: 0.88rem;
+    }
+    .opcion-socio-encontrado:last-child { border-bottom: none; }
+    .opcion-socio-encontrado:hover, .opcion-socio-encontrado:active { background: var(--dorado-claro); }
+    .aviso-busqueda-socio { font-size: 0.78rem; color: #777; padding: 8px 2px; }
+
+    .tarjeta-socio-seleccionado {
+        display: flex; align-items: center; justify-content: space-between; gap: 10px;
+        background: var(--dorado-claro); border: 1px solid var(--dorado);
+        border-radius: 8px; padding: 11px 14px; margin-bottom: 16px;
+    }
+    .tarjeta-socio-seleccionado span { font-weight: 700; color: var(--verde-primario); font-size: 0.88rem; }
+    .btn-cambiar-socio {
+        background: none; border: none; color: var(--verde-primario); font-size: 0.72rem;
+        font-weight: 700; text-decoration: underline; cursor: pointer; text-transform: uppercase;
+    }
+
+    /* =====================================================================
+       APLICACIÓN PRINCIPAL (con sesión)
+       ===================================================================== */
+    .app-socio { width: 100%; max-width: 640px; flex: 1; display: none; flex-direction: column; }
+    .app-socio.activo { display: flex; }
+
+    .encabezado-app {
+        display: flex; align-items: center; justify-content: space-between; gap: 10px;
+        background: linear-gradient(135deg, var(--verde-primario) 0%, #0d2a1e 100%);
+        padding: 16px 18px; border-bottom: 3px solid var(--dorado);
+        position: sticky; top: 0; z-index: 200;
+    }
+    .encabezado-app .marca-portal span { color: var(--dorado-claro); }
+    .encabezado-app .marca-portal img { filter: drop-shadow(0 2px 5px rgba(0,0,0,0.4)); }
+    .bienvenida-socio { text-align: right; }
+    .bienvenida-socio .nombre { font-size: 0.82rem; font-weight: 700; color: var(--blanco); }
+    .btn-cerrar-sesion {
+        background: none; border: 1px solid rgba(244,239,226,0.4); color: var(--dorado-claro);
+        font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+        padding: 5px 10px; border-radius: 20px; cursor: pointer; margin-top: 4px;
+    }
+    .btn-cerrar-sesion:hover { background: rgba(244,239,226,0.12); }
+
+    .tabs-app {
+        display: flex; background: var(--blanco); border-bottom: 1px solid var(--borde);
+        position: sticky; top: 68px; z-index: 190;
+    }
+    .tab-app {
+        flex: 1; text-align: center; padding: 13px 8px; cursor: pointer; border: none;
+        background: none; font-family: 'Montserrat', sans-serif; font-weight: 700;
+        font-size: 0.76rem; text-transform: uppercase; letter-spacing: 0.6px; color: #888;
+        border-bottom: 3px solid transparent; transition: color 0.2s ease, border-color 0.2s ease;
+    }
+    .tab-app.activa { color: var(--verde-primario); border-bottom-color: var(--dorado); }
+
+    .contenido-app { flex: 1; padding: 16px 14px 32px; }
+    .seccion-app { display: none; }
+    .seccion-app.activa { display: block; }
+
+    .subtabs-fecha { display: flex; gap: 8px; margin-bottom: 16px; }
+    .subtab-fecha {
+        flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--borde);
+        background: var(--blanco); cursor: pointer; font-family: 'Montserrat', sans-serif;
+        font-weight: 700; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.5px;
+        color: var(--verde-primario); text-align: center;
+    }
+    .subtab-fecha.activa { background: var(--verde-primario); color: var(--blanco); border-color: var(--verde-primario); }
+
+    .aviso-vacio {
+        text-align: center; color: #888; font-size: 0.85rem; padding: 36px 10px; line-height: 1.5;
+    }
+
+    .tarjeta-horario {
+        background: var(--blanco); border: 1px solid var(--borde); border-radius: 10px;
+        padding: 14px 16px; margin-bottom: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+    }
+    .fila-horario-encabezado { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .horario-hora { font-family: 'Cinzel', serif; font-size: 1.05rem; color: var(--verde-primario); font-weight: 700; }
+    .horario-meta { font-size: 0.72rem; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
+    .badge-espacios {
+        font-size: 0.68rem; font-weight: 700; padding: 3px 9px; border-radius: 12px;
+        text-transform: uppercase; letter-spacing: 0.4px;
+    }
+    .badge-espacios.disponible { background: #eaf5ea; color: var(--verde-ok); }
+    .badge-espacios.lleno { background: #f2f2f2; color: #999; }
+
+    .lista-jugadores-slot { list-style: none; margin-bottom: 12px; }
+    .lista-jugadores-slot li {
+        font-size: 0.83rem; padding: 5px 0; border-bottom: 1px dashed var(--borde);
+        color: #444; display: flex; align-items: center; gap: 7px;
+    }
+    .lista-jugadores-slot li:last-child { border-bottom: none; }
+    .lista-jugadores-slot li.vacio { color: #aaa; font-style: italic; }
+    .punto-jugador { width: 6px; height: 6px; border-radius: 50%; background: var(--dorado); flex-shrink: 0; }
+    .punto-jugador.vacio-punto { background: #ddd; }
+
+    .btn-reservar-slot {
+        width: 100%; padding: 10px; background: var(--verde-primario); color: var(--blanco);
+        border: 1px solid var(--dorado); border-radius: 7px; font-family: 'Montserrat', sans-serif;
+        font-weight: 700; font-size: 0.76rem; text-transform: uppercase; letter-spacing: 0.6px; cursor: pointer;
+    }
+    .btn-reservar-slot:hover { background: var(--verde-hover); }
+    .btn-reservar-slot:disabled { background: #ccc; border-color: #ccc; cursor: not-allowed; }
+
+    .tarjeta-reserva {
+        background: var(--blanco); border: 1px solid var(--borde); border-left: 5px solid var(--dorado);
+        border-radius: 10px; padding: 14px 16px; margin-bottom: 12px;
+        display: flex; align-items: center; justify-content: space-between; gap: 12px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+    }
+    .info-reserva .fecha-reserva {
+        font-size: 0.68rem; color: var(--dorado); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;
+    }
+    .info-reserva .hora-reserva { font-family: 'Cinzel', serif; font-size: 1rem; color: var(--verde-primario); font-weight: 700; margin: 2px 0; }
+    .info-reserva .meta-reserva { font-size: 0.74rem; color: #888; }
+    .btn-cancelar-reserva {
+        flex-shrink: 0; background: var(--blanco); color: var(--rojo); border: 1px solid var(--rojo);
+        padding: 8px 12px; border-radius: 7px; font-size: 0.7rem; font-weight: 700;
+        text-transform: uppercase; letter-spacing: 0.4px; cursor: pointer;
+    }
+    .btn-cancelar-reserva:hover { background: #fdecea; }
+
+    .btn-actualizar {
+        display: block; margin: 0 auto 16px; background: none; border: 1px solid var(--borde);
+        color: var(--verde-primario); padding: 7px 14px; border-radius: 20px; font-size: 0.72rem;
+        font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer;
+    }
+    .btn-actualizar:hover { background: var(--dorado-claro); }
+
+    /* Confirmación simple (reemplaza confirm() nativo) */
+    .modal-confirmar-socio {
+        display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+        z-index: 5000; align-items: center; justify-content: center; padding: 20px;
+    }
+    .modal-confirmar-socio.visible { display: flex; }
+    .tarjeta-confirmar-socio {
+        background: var(--blanco); border-radius: 12px; padding: 26px 24px; max-width: 340px;
+        width: 100%; text-align: center; border-top: 5px solid var(--verde-primario);
+    }
+    .tarjeta-confirmar-socio h3 { font-family: 'Cinzel', serif; color: var(--verde-primario); margin-bottom: 10px; font-size: 1.1rem; }
+    .tarjeta-confirmar-socio p { font-size: 0.85rem; color: #555; line-height: 1.5; margin-bottom: 20px; }
+    .acciones-confirmar-socio { display: flex; gap: 10px; }
+    .acciones-confirmar-socio button {
+        flex: 1; padding: 10px; border-radius: 7px; font-weight: 700; font-size: 0.74rem;
+        text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer; border: 1px solid;
+        font-family: 'Montserrat', sans-serif;
+    }
+    .btn-confirmar-no { background: var(--blanco); color: #666; border-color: var(--borde); }
+    .btn-confirmar-si { background: var(--rojo); color: var(--blanco); border-color: #8e0000; }
+
+    /* Toast de confirmación de acciones (reserva/cancelación exitosa) */
+    .toast-socio {
+        position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%) translateY(20px);
+        background: var(--verde-primario); color: var(--blanco); padding: 12px 20px; border-radius: 30px;
+        font-size: 0.82rem; font-weight: 600; box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+        z-index: 6000; opacity: 0; pointer-events: none; transition: opacity 0.25s ease, transform 0.25s ease;
+        border: 1px solid var(--dorado); max-width: 90%; text-align: center;
+    }
+    .toast-socio.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .toast-socio.error { background: var(--rojo); border-color: #8e0000; }
+
+    @media (min-width: 480px) {
+        .tarjeta-reserva { align-items: center; }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Pantalla de carga inicial mientras se resuelve la sesión -->
+  <div class="pantalla-carga" id="pantallaCarga">
+      <div class="spinner-carga"></div>
+      <p>Cargando tu portal...</p>
+  </div>
+
+  <!-- ===================== GATE DE ACCESO (login / registro) ===================== -->
+  <div class="gate-acceso oculto" id="gateAcceso">
+      <div class="tarjeta-acceso">
+          <div class="marca-portal">
+              <img src="img/Logo1.png" alt="Club de Golf San Carlos" onerror="this.src='img/icon.png'">
+              <span>Club de Golf<br>San Carlos</span>
+          </div>
+
+          <div class="tabs-acceso">
+              <button type="button" class="tab-acceso activa" id="tabIniciarSesion">Iniciar sesión</button>
+              <button type="button" class="tab-acceso" id="tabRegistro">Crear cuenta</button>
+          </div>
+
+          <!-- ---------- Iniciar sesión ---------- -->
+          <div class="panel-acceso activo" id="panelIniciarSesion">
+              <form id="formLoginSocio">
+                  <div class="grupo-campo">
+                      <label for="txtLoginUsuario">Usuario</label>
+                      <input type="text" id="txtLoginUsuario" autocomplete="username" required placeholder="Tu usuario">
+                  </div>
+                  <div class="grupo-campo">
+                      <label for="txtLoginPassword">Contraseña</label>
+                      <input type="password" id="txtLoginPassword" autocomplete="current-password" required placeholder="••••••••">
+                  </div>
+                  <p class="mensaje-error" id="msgErrorLogin"></p>
+                  <button type="submit" class="btn-primario" id="btnLoginSocio">Entrar</button>
+              </form>
+          </div>
+
+          <!-- ---------- Crear cuenta (registro restringido a socios ya dados de alta) ---------- -->
+          <div class="panel-acceso" id="panelRegistro">
+
+              <!-- Paso 1: buscar el nombre propio en la lista de socios -->
+              <div id="pasoBuscarSocio">
+                  <div class="grupo-campo">
+                      <label for="txtBuscarSocio">Busca tu nombre</label>
+                      <input type="text" id="txtBuscarSocio" placeholder="Escribe al menos 2 letras" autocomplete="off">
+                      <p class="ayuda-campo">Debes aparecer ya en la lista de socios del club. Si no te encuentras, contacta al club.</p>
+                  </div>
+                  <div class="resultados-busqueda-socio" id="resultadosBusquedaSocio"></div>
+              </div>
+
+              <!-- Paso 2: aparece tras elegir un nombre de la lista -->
+              <div id="pasoDatosRegistro" style="display:none;">
+                  <div class="tarjeta-socio-seleccionado">
+                      <span id="nombreSocioSeleccionado"></span>
+                      <button type="button" class="btn-cambiar-socio" id="btnCambiarSocioSeleccionado">Cambiar</button>
+                  </div>
+                  <form id="formRegistroSocio">
+                      <div class="grupo-campo">
+                          <label for="txtNuevoUsuarioSocio">Elige un usuario</label>
+                          <input type="text" id="txtNuevoUsuarioSocio" autocomplete="username" required placeholder="Ej. juan.perez" pattern="[a-z0-9_.]{3,50}">
+                          <p class="ayuda-campo">Solo minúsculas, números, punto y guión bajo.</p>
+                      </div>
+                      <div class="grupo-campo">
+                          <label for="txtNuevaPasswordSocio">Crea una contraseña</label>
+                          <input type="password" id="txtNuevaPasswordSocio" autocomplete="new-password" required minlength="8" placeholder="Mínimo 8 caracteres">
+                      </div>
+                      <p class="mensaje-error" id="msgErrorRegistroSocio"></p>
+                      <p class="mensaje-exito" id="msgExitoRegistroSocio"></p>
+                      <button type="submit" class="btn-primario" id="btnRegistrarSocio">Crear mi cuenta</button>
+                  </form>
+              </div>
+          </div>
+      </div>
+  </div>
+
+  <!-- ===================== APP PRINCIPAL (con sesión) ===================== -->
+  <div class="app-socio" id="appSocio">
+      <header class="encabezado-app">
+          <div class="marca-portal">
+              <img src="img/Logo1.png" alt="Club de Golf San Carlos" onerror="this.src='img/icon.png'" style="width:36px;height:36px;">
+              <span>Mis Reservas</span>
+          </div>
+          <div class="bienvenida-socio">
+              <div class="nombre" id="nombreSocioApp"></div>
+              <button type="button" class="btn-cerrar-sesion" id="btnCerrarSesionSocio">Cerrar sesión</button>
+          </div>
+      </header>
+
+      <nav class="tabs-app">
+          <button type="button" class="tab-app activa" id="tabReservar">Reservar</button>
+          <button type="button" class="tab-app" id="tabMisReservas">Mis reservas</button>
+      </nav>
+
+      <div class="contenido-app">
+
+          <!-- ---------- RESERVAR ---------- -->
+          <section class="seccion-app activa" id="seccionReservar">
+              <div class="subtabs-fecha">
+                  <button type="button" class="subtab-fecha activa" id="subtabHoy">Hoy</button>
+                  <button type="button" class="subtab-fecha" id="subtabManana">Mañana</button>
+              </div>
+              <div id="listaHorariosDisponibles">
+                  <p class="aviso-vacio">Cargando horarios...</p>
+              </div>
+          </section>
+
+          <!-- ---------- MIS RESERVAS ---------- -->
+          <section class="seccion-app" id="seccionMisReservas">
+              <button type="button" class="btn-actualizar" id="btnActualizarReservas">↻ Actualizar</button>
+              <div id="listaMisReservas">
+                  <p class="aviso-vacio">Cargando tus reservas...</p>
+              </div>
+          </section>
+
+      </div>
+  </div>
+
+  <!-- Modal de confirmación (reservar / cancelar) -->
+  <div class="modal-confirmar-socio" id="modalConfirmarSocio">
+      <div class="tarjeta-confirmar-socio">
+          <h3 id="tituloConfirmarSocio">¿Confirmar?</h3>
+          <p id="textoConfirmarSocio"></p>
+          <div class="acciones-confirmar-socio">
+              <button type="button" class="btn-confirmar-no" id="btnConfirmarSocioNo">Cancelar</button>
+              <button type="button" class="btn-confirmar-si" id="btnConfirmarSocioSi">Confirmar</button>
+          </div>
+      </div>
+  </div>
+
+  <div class="toast-socio" id="toastSocio"></div>
+
+  <script>
+      // =======================================================================
+      // CONFIGURACIÓN / UTILIDADES
+      // =======================================================================
+      const API_BASE = ''; // los endpoints socio_*.php viven en la misma carpeta
+
+      async function apiFetch(endpoint, opciones = {}) {
+          const resp = await fetch(API_BASE + endpoint, {
+              credentials: 'include',
+              headers: { 'Content-Type': 'application/json' },
+              ...opciones
+          });
+          const data = await resp.json();
+          if (data.status === 'error') throw new Error(data.message);
+          return data;
+      }
+
+      function obtenerFechaLocalISO(diasASumar = 0) {
+          const ahora = new Date();
+          ahora.setDate(ahora.getDate() + diasASumar);
+          const yyyy = ahora.getFullYear();
+          const mm = String(ahora.getMonth() + 1).padStart(2, '0');
+          const dd = String(ahora.getDate()).padStart(2, '0');
+          return `${yyyy}-${mm}-${dd}`;
+      }
+
+      const fechaHoy = obtenerFechaLocalISO(0);
+      const fechaManana = obtenerFechaLocalISO(1);
+
+      function formatearHoraAMPM(texto) {
+          const coincidencia = String(texto).match(/(\d{1,2}):(\d{2})/);
+          if (!coincidencia) return texto;
+          const horas = parseInt(coincidencia[1], 10);
+          const minutos = coincidencia[2];
+          const ampm = horas >= 12 ? 'PM' : 'AM';
+          const horas12 = String(horas).padStart(2, '0');
+          return `${horas12}:${minutos} ${ampm}`;
+      }
+
+      function formatearFechaLarga(fechaISO) {
+          const [anio, mes, dia] = fechaISO.split('-').map(Number);
+          const fecha = new Date(anio, mes - 1, dia);
+          let texto = fecha.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+          return texto.charAt(0).toUpperCase() + texto.slice(1);
+      }
+
+      function mostrarToast(mensaje, esError = false) {
+          const toast = document.getElementById('toastSocio');
+          toast.textContent = mensaje;
+          toast.classList.toggle('error', esError);
+          toast.classList.add('visible');
+          clearTimeout(toast._timeout);
+          toast._timeout = setTimeout(() => toast.classList.remove('visible'), 3200);
+      }
+
+      function confirmarSocio({ titulo = '¿Estás seguro?', mensaje = '' } = {}) {
+          return new Promise((resolve) => {
+              const modal = document.getElementById('modalConfirmarSocio');
+              document.getElementById('tituloConfirmarSocio').textContent = titulo;
+              document.getElementById('textoConfirmarSocio').textContent = mensaje;
+              modal.classList.add('visible');
+
+              const btnSi = document.getElementById('btnConfirmarSocioSi');
+              const btnNo = document.getElementById('btnConfirmarSocioNo');
+
+              function limpiar(resultado) {
+                  modal.classList.remove('visible');
+                  btnSi.removeEventListener('click', alSi);
+                  btnNo.removeEventListener('click', alNo);
+                  resolve(resultado);
+              }
+              function alSi() { limpiar(true); }
+              function alNo() { limpiar(false); }
+              btnSi.addEventListener('click', alSi);
+              btnNo.addEventListener('click', alNo);
+          });
+      }
+
+      // =======================================================================
+      // ESTADO
+      // =======================================================================
+      let socioActual = null;
+      let fechaSeleccionada = fechaHoy;
+
+      // =======================================================================
+      // ELEMENTOS
+      // =======================================================================
+      const pantallaCarga = document.getElementById('pantallaCarga');
+      const gateAcceso = document.getElementById('gateAcceso');
+      const appSocio = document.getElementById('appSocio');
+
+      const tabIniciarSesion = document.getElementById('tabIniciarSesion');
+      const tabRegistro = document.getElementById('tabRegistro');
+      const panelIniciarSesion = document.getElementById('panelIniciarSesion');
+      const panelRegistro = document.getElementById('panelRegistro');
+
+      const formLoginSocio = document.getElementById('formLoginSocio');
+      const msgErrorLogin = document.getElementById('msgErrorLogin');
+      const btnLoginSocio = document.getElementById('btnLoginSocio');
+
+      const txtBuscarSocio = document.getElementById('txtBuscarSocio');
+      const resultadosBusquedaSocio = document.getElementById('resultadosBusquedaSocio');
+      const pasoBuscarSocio = document.getElementById('pasoBuscarSocio');
+      const pasoDatosRegistro = document.getElementById('pasoDatosRegistro');
+      const nombreSocioSeleccionado = document.getElementById('nombreSocioSeleccionado');
+      const btnCambiarSocioSeleccionado = document.getElementById('btnCambiarSocioSeleccionado');
+      const formRegistroSocio = document.getElementById('formRegistroSocio');
+      const msgErrorRegistroSocio = document.getElementById('msgErrorRegistroSocio');
+      const msgExitoRegistroSocio = document.getElementById('msgExitoRegistroSocio');
+
+      const nombreSocioApp = document.getElementById('nombreSocioApp');
+      const btnCerrarSesionSocio = document.getElementById('btnCerrarSesionSocio');
+
+      const tabReservar = document.getElementById('tabReservar');
+      const tabMisReservas = document.getElementById('tabMisReservas');
+      const seccionReservar = document.getElementById('seccionReservar');
+      const seccionMisReservas = document.getElementById('seccionMisReservas');
+
+      const subtabHoy = document.getElementById('subtabHoy');
+      const subtabManana = document.getElementById('subtabManana');
+      const listaHorariosDisponibles = document.getElementById('listaHorariosDisponibles');
+      const btnActualizarReservas = document.getElementById('btnActualizarReservas');
+      const listaMisReservas = document.getElementById('listaMisReservas');
+
+      let socioIdSeleccionadoRegistro = null;
+
+      // =======================================================================
+      // GATE: TABS (Iniciar sesión / Crear cuenta)
+      // =======================================================================
+      tabIniciarSesion.addEventListener('click', () => {
+          tabIniciarSesion.classList.add('activa');
+          tabRegistro.classList.remove('activa');
+          panelIniciarSesion.classList.add('activo');
+          panelRegistro.classList.remove('activo');
+      });
+      tabRegistro.addEventListener('click', () => {
+          tabRegistro.classList.add('activa');
+          tabIniciarSesion.classList.remove('activa');
+          panelRegistro.classList.add('activo');
+          panelIniciarSesion.classList.remove('activo');
+      });
+
+      // =======================================================================
+      // LOGIN
+      // =======================================================================
+      formLoginSocio.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          msgErrorLogin.classList.remove('visible');
+          btnLoginSocio.disabled = true;
+          btnLoginSocio.textContent = 'Entrando...';
+
+          try {
+              const { socio } = await apiFetch('socio_login.php', {
+                  method: 'POST',
+                  body: JSON.stringify({
+                      username: document.getElementById('txtLoginUsuario').value.trim(),
+                      password: document.getElementById('txtLoginPassword').value
+                  })
+              });
+              aplicarSesion(socio);
+          } catch (err) {
+              msgErrorLogin.textContent = err.message;
+              msgErrorLogin.classList.add('visible');
+          } finally {
+              btnLoginSocio.disabled = false;
+              btnLoginSocio.textContent = 'Entrar';
+          }
+      });
+
+      // =======================================================================
+      // REGISTRO: paso 1, buscar el propio nombre
+      // =======================================================================
+      let debounceBusquedaTimer = null;
+      txtBuscarSocio.addEventListener('input', () => {
+          clearTimeout(debounceBusquedaTimer);
+          const q = txtBuscarSocio.value.trim();
+          if (q.length < 2) {
+              resultadosBusquedaSocio.classList.remove('visible');
+              resultadosBusquedaSocio.innerHTML = '';
+              return;
+          }
+          debounceBusquedaTimer = setTimeout(() => buscarSocioParaRegistro(q), 300);
+      });
+
+      async function buscarSocioParaRegistro(q) {
+          try {
+              const { data } = await apiFetch(`socio_buscar_para_registro.php?q=${encodeURIComponent(q)}`);
+              if (!data.length) {
+                  resultadosBusquedaSocio.innerHTML = '<p class="aviso-busqueda-socio">No encontramos ese nombre. Verifica que esté bien escrito o contacta al club.</p>';
+                  resultadosBusquedaSocio.classList.add('visible');
+                  return;
+              }
+              resultadosBusquedaSocio.innerHTML = data.map(s =>
+                  `<div class="opcion-socio-encontrado" data-id="${s.id}" data-nombre="${s.nombre_completo.replace(/"/g, '&quot;')}">${s.nombre_completo}</div>`
+              ).join('');
+              resultadosBusquedaSocio.classList.add('visible');
+          } catch (err) {
+              resultadosBusquedaSocio.innerHTML = `<p class="aviso-busqueda-socio">${err.message}</p>`;
+              resultadosBusquedaSocio.classList.add('visible');
+          }
+      }
+
+      resultadosBusquedaSocio.addEventListener('click', (e) => {
+          const opcion = e.target.closest('.opcion-socio-encontrado');
+          if (!opcion) return;
+          socioIdSeleccionadoRegistro = opcion.getAttribute('data-id');
+          nombreSocioSeleccionado.textContent = opcion.getAttribute('data-nombre');
+          pasoBuscarSocio.style.display = 'none';
+          pasoDatosRegistro.style.display = 'block';
+          resultadosBusquedaSocio.classList.remove('visible');
+      });
+
+      btnCambiarSocioSeleccionado.addEventListener('click', () => {
+          socioIdSeleccionadoRegistro = null;
+          pasoDatosRegistro.style.display = 'none';
+          pasoBuscarSocio.style.display = 'block';
+          txtBuscarSocio.value = '';
+          formRegistroSocio.reset();
+          msgErrorRegistroSocio.classList.remove('visible');
+          msgExitoRegistroSocio.classList.remove('visible');
+      });
+
+      // =======================================================================
+      // REGISTRO: paso 2, crear usuario/contraseña
+      // =======================================================================
+      formRegistroSocio.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          msgErrorRegistroSocio.classList.remove('visible');
+          msgExitoRegistroSocio.classList.remove('visible');
+
+          if (!socioIdSeleccionadoRegistro) {
+              msgErrorRegistroSocio.textContent = 'Primero busca y selecciona tu nombre.';
+              msgErrorRegistroSocio.classList.add('visible');
+              return;
+          }
+
+          const btn = document.getElementById('btnRegistrarSocio');
+          btn.disabled = true;
+          btn.textContent = 'Creando cuenta...';
+
+          try {
+              await apiFetch('socio_registro.php', {
+                  method: 'POST',
+                  body: JSON.stringify({
+                      socio_id: Number(socioIdSeleccionadoRegistro),
+                      username: document.getElementById('txtNuevoUsuarioSocio').value.trim(),
+                      password: document.getElementById('txtNuevaPasswordSocio').value
+                  })
+              });
+              msgExitoRegistroSocio.textContent = '¡Cuenta creada! Ya puedes iniciar sesión.';
+              msgExitoRegistroSocio.classList.add('visible');
+              setTimeout(() => {
+                  tabIniciarSesion.click();
+                  document.getElementById('txtLoginUsuario').value = document.getElementById('txtNuevoUsuarioSocio').value.trim();
+              }, 1100);
+          } catch (err) {
+              msgErrorRegistroSocio.textContent = err.message;
+              msgErrorRegistroSocio.classList.add('visible');
+          } finally {
+              btn.disabled = false;
+              btn.textContent = 'Crear mi cuenta';
+          }
+      });
+
+      // =======================================================================
+      // SESIÓN
+      // =======================================================================
+      function aplicarSesion(socio) {
+          socioActual = socio;
+          nombreSocioApp.textContent = socio.nombre_completo;
+          gateAcceso.classList.add('oculto');
+          appSocio.classList.add('activo');
+          cargarHorariosDisponibles();
+          cargarMisReservas();
+      }
+
+      function limpiarSesionUI() {
+          socioActual = null;
+          appSocio.classList.remove('activo');
+          gateAcceso.classList.remove('oculto');
+          formLoginSocio.reset();
+      }
+
+      async function restaurarSesion() {
+          try {
+              const { socio } = await apiFetch('socio_sesion_actual.php');
+              aplicarSesion(socio);
+          } catch (err) {
+              limpiarSesionUI();
+          } finally {
+              pantallaCarga.classList.add('oculto');
+          }
+      }
+
+      btnCerrarSesionSocio.addEventListener('click', async () => {
+          try {
+              await apiFetch('socio_logout.php', { method: 'POST' });
+          } catch (err) {
+              console.error(err);
+          }
+          limpiarSesionUI();
+      });
+
+      // =======================================================================
+      // TABS DE LA APP (Reservar / Mis reservas)
+      // =======================================================================
+      tabReservar.addEventListener('click', () => {
+          tabReservar.classList.add('activa');
+          tabMisReservas.classList.remove('activa');
+          seccionReservar.classList.add('activa');
+          seccionMisReservas.classList.remove('activa');
+      });
+      tabMisReservas.addEventListener('click', () => {
+          tabMisReservas.classList.add('activa');
+          tabReservar.classList.remove('activa');
+          seccionMisReservas.classList.add('activa');
+          seccionReservar.classList.remove('activa');
+          cargarMisReservas();
+      });
+
+      subtabHoy.addEventListener('click', () => {
+          fechaSeleccionada = fechaHoy;
+          subtabHoy.classList.add('activa');
+          subtabManana.classList.remove('activa');
+          cargarHorariosDisponibles();
+      });
+      subtabManana.addEventListener('click', () => {
+          fechaSeleccionada = fechaManana;
+          subtabManana.classList.add('activa');
+          subtabHoy.classList.remove('activa');
+          cargarHorariosDisponibles();
+      });
+
+      // =======================================================================
+      // RESERVAR: cargar horarios disponibles de la fecha elegida
+      // =======================================================================
+      async function cargarHorariosDisponibles() {
+          listaHorariosDisponibles.innerHTML = '<p class="aviso-vacio">Cargando horarios...</p>';
+          try {
+              const { data } = await apiFetch(`socio_hoyos_disponibles.php?fecha=${fechaSeleccionada}`);
+              pintarHorariosDisponibles(data);
+          } catch (err) {
+              listaHorariosDisponibles.innerHTML = `<p class="aviso-vacio">No se pudieron cargar los horarios: ${err.message}</p>`;
+          }
+      }
+
+      function pintarHorariosDisponibles(filas) {
+          if (!filas.length) {
+              listaHorariosDisponibles.innerHTML = '<p class="aviso-vacio">No quedan horarios disponibles para este día.</p>';
+              return;
+          }
+
+          listaHorariosDisponibles.innerHTML = filas.map(fila => {
+              const jugadores = [fila.jugador_1, fila.jugador_2, fila.jugador_3, fila.jugador_4, fila.jugador_5];
+              const yaEstaInscrito = socioActual && jugadores.includes(socioActual.nombre_completo);
+              const lleno = fila.espacios_libres === 0;
+
+              const listaJugadoresHtml = jugadores.map(j => j
+                  ? `<li><span class="punto-jugador"></span>${j}</li>`
+                  : `<li class="vacio"><span class="punto-jugador vacio-punto"></span>Disponible</li>`
+              ).join('');
+
+              let botonHtml;
+              if (yaEstaInscrito) {
+                  botonHtml = `<button type="button" class="btn-reservar-slot" disabled>Ya tienes lugar aquí</button>`;
+              } else if (lleno) {
+                  botonHtml = `<button type="button" class="btn-reservar-slot" disabled>Horario lleno</button>`;
+              } else {
+                  botonHtml = `<button type="button" class="btn-reservar-slot" data-tee-time-id="${fila.tee_time_id}">Reservar este horario</button>`;
+              }
+
+              return `
+                  <div class="tarjeta-horario">
+                      <div class="fila-horario-encabezado">
+                          <div>
+                              <div class="horario-hora">${formatearHoraAMPM(fila.hora_salida)}</div>
+                              <div class="horario-meta">Hoyo ${fila.hoyo} · Campo ${fila.campo || 'Norte'}</div>
+                          </div>
+                          <span class="badge-espacios ${lleno ? 'lleno' : 'disponible'}">
+                              ${lleno ? 'Lleno' : fila.espacios_libres + ' lugar' + (fila.espacios_libres === 1 ? '' : 'es')}
+                          </span>
+                      </div>
+                      <ul class="lista-jugadores-slot">${listaJugadoresHtml}</ul>
+                      ${botonHtml}
+                  </div>
+              `;
+          }).join('');
+
+          listaHorariosDisponibles.querySelectorAll('.btn-reservar-slot[data-tee-time-id]').forEach(btn => {
+              btn.addEventListener('click', () => reservarHorario(btn.getAttribute('data-tee-time-id'), btn));
+          });
+      }
+
+      async function reservarHorario(teeTimeId, btn) {
+          const confirmado = await confirmarSocio({
+              titulo: '¿Reservar este horario?',
+              mensaje: 'Quedarás registrado con tu nombre en este hoyo y horario.'
+          });
+          if (!confirmado) return;
+
+          btn.disabled = true;
+          btn.textContent = 'Reservando...';
+
+          try {
+              await apiFetch('socio_reservar.php', {
+                  method: 'POST',
+                  body: JSON.stringify({ tee_time_id: Number(teeTimeId) })
+              });
+              mostrarToast('¡Reservación confirmada!');
+              await cargarHorariosDisponibles();
+              await cargarMisReservas();
+          } catch (err) {
+              mostrarToast(err.message, true);
+              btn.disabled = false;
+              btn.textContent = 'Reservar este horario';
+          }
+      }
+
+      // =======================================================================
+      // MIS RESERVAS
+      // =======================================================================
+      btnActualizarReservas.addEventListener('click', cargarMisReservas);
+
+      async function cargarMisReservas() {
+          listaMisReservas.innerHTML = '<p class="aviso-vacio">Cargando tus reservas...</p>';
+          try {
+              const { data } = await apiFetch('socio_mis_reservas.php');
+              pintarMisReservas(data);
+          } catch (err) {
+              listaMisReservas.innerHTML = `<p class="aviso-vacio">No se pudieron cargar tus reservas: ${err.message}</p>`;
+          }
+      }
+
+      function pintarMisReservas(filas) {
+          if (!filas.length) {
+              listaMisReservas.innerHTML = '<p class="aviso-vacio">Todavía no tienes reservaciones. Ve a la pestaña "Reservar" para apartar un horario.</p>';
+              return;
+          }
+
+          listaMisReservas.innerHTML = filas.map(fila => `
+              <div class="tarjeta-reserva" data-tee-time-id="${fila.tee_time_id}">
+                  <div class="info-reserva">
+                      <div class="fecha-reserva">${formatearFechaLarga(fila.fecha)}</div>
+                      <div class="hora-reserva">${formatearHoraAMPM(fila.hora_salida)}</div>
+                      <div class="meta-reserva">Hoyo ${fila.hoyo} · Campo ${fila.campo || 'Norte'}${fila.detalles ? ' · ' + fila.detalles : ''}</div>
+                  </div>
+                  <button type="button" class="btn-cancelar-reserva" data-tee-time-id="${fila.tee_time_id}">Cancelar</button>
+              </div>
+          `).join('');
+
+          listaMisReservas.querySelectorAll('.btn-cancelar-reserva').forEach(btn => {
+              btn.addEventListener('click', () => cancelarReserva(btn.getAttribute('data-tee-time-id'), btn));
+          });
+      }
+
+      async function cancelarReserva(teeTimeId, btn) {
+          const confirmado = await confirmarSocio({
+              titulo: '¿Cancelar esta reservación?',
+              mensaje: 'Tu lugar quedará libre para otro socio. Esta acción no se puede deshacer.'
+          });
+          if (!confirmado) return;
+
+          btn.disabled = true;
+          btn.textContent = 'Cancelando...';
+
+          try {
+              await apiFetch('socio_cancelar.php', {
+                  method: 'POST',
+                  body: JSON.stringify({ tee_time_id: Number(teeTimeId) })
+              });
+              mostrarToast('Reservación cancelada.');
+              await cargarMisReservas();
+              if (seccionReservar.classList.contains('activa')) await cargarHorariosDisponibles();
+          } catch (err) {
+              mostrarToast(err.message, true);
+              btn.disabled = false;
+              btn.textContent = 'Cancelar';
+          }
+      }
+
+      // =======================================================================
+      // ARRANQUE
+      // =======================================================================
+      restaurarSesion();
+  </script>
+
+</body>
+</html>
