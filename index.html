@@ -546,18 +546,73 @@
 
     .pie-login-seguridad { margin-top: 24px; text-align: center; font-size: 0.72rem; color: #728a7d; letter-spacing: 0.5px; }
 
-    /* Enlace de descubrimiento hacia el portal de socios (portal-socios.html).
-       Vive dentro del gate de acceso -que es lo único visible antes de iniciar
-       sesión- para que cualquier socio que llegue aquí por error encuentre el
-       camino correcto sin necesidad de conocer la URL de memoria. */
-    .enlace-portal-socios {
-        display: block; margin-top: 14px; text-align: center;
-        font-size: 0.76rem; color: var(--dorado-claro); text-decoration: none;
+    /* =====================================================================
+       GATE DUAL (STAFF / SOCIOS)
+       Un mismo gate ahora sirve a dos públicos: el personal del club (modo
+       por defecto) y los socios (modo alterno). El modo activo se controla
+       agregando/quitando la clase "modo-socios" en .tarjeta-login-global —
+       ver JS: alternarModoGate(). En pantallas angostas (<=820px) no hay
+       swap posicional (no tiene sentido sin hover de mouse): el botón
+       .btn-cambiar-modo-gate sigue funcionando por click/tap.
+       ===================================================================== */
+    .leyenda-modo-acceso {
+        font-size: 0.68rem; font-weight: 700; color: var(--dorado);
+        text-transform: uppercase; letter-spacing: 1.3px; margin-bottom: 10px; opacity: 0.95;
+    }
+
+    .btn-cambiar-modo-gate {
+        display: block; width: 100%; margin-top: 14px; text-align: center; cursor: pointer;
+        font-size: 0.74rem; color: var(--dorado-claro); background: none;
         border: 1px solid rgba(188, 156, 87, 0.4); border-radius: 10px;
         padding: 10px 14px; transition: background-color 0.2s ease, border-color 0.2s ease;
+        font-family: 'Montserrat', sans-serif; font-weight: 700; letter-spacing: 0.3px;
     }
-    .enlace-portal-socios:hover {
-        background-color: rgba(188, 156, 87, 0.12); border-color: var(--dorado);
+    .btn-cambiar-modo-gate:hover { background-color: rgba(188, 156, 87, 0.12); border-color: var(--dorado); }
+
+    /* ---------- Vista de acceso de socios (login + registro), embebida
+       dentro de .panel-form-global — oculta salvo cuando modo-socios está
+       activo (ver reglas junto con #vistaStaffLogin más abajo). ---------- */
+    #vistaSociosAuth { display: none; }
+    .tarjeta-login-global.modo-socios #vistaStaffLogin { display: none; }
+    .tarjeta-login-global.modo-socios #vistaSociosAuth { display: block; }
+
+    .tabs-acceso-socio {
+        display: flex; border: 1px solid rgba(255,255,255,0.14); border-radius: 10px;
+        overflow: hidden; margin-bottom: 22px;
+    }
+    .tab-acceso-socio {
+        flex: 1; text-align: center; padding: 10px 8px; cursor: pointer; border: none;
+        font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 0.72rem;
+        text-transform: uppercase; letter-spacing: 0.6px; background: rgba(255,255,255,0.04);
+        color: #9ab3a5; transition: background-color 0.2s ease, color 0.2s ease;
+    }
+    .tab-acceso-socio.activa { background: var(--dorado); color: var(--verde-oscuro); }
+
+    .panel-acceso-socio { display: none; }
+    .panel-acceso-socio.activo { display: block; }
+
+    .resultados-busqueda-socio-gate {
+        margin-top: 6px; border: 1px solid rgba(255,255,255,0.14); border-radius: 8px;
+        max-height: 180px; overflow-y: auto; display: none; background: rgba(10,20,15,0.95);
+    }
+    .resultados-busqueda-socio-gate.visible { display: block; }
+    .opcion-socio-gate {
+        padding: 10px 12px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.08);
+        font-size: 0.85rem; color: var(--blanco);
+    }
+    .opcion-socio-gate:last-child { border-bottom: none; }
+    .opcion-socio-gate:hover { background: rgba(188,156,87,0.15); }
+    .aviso-busqueda-socio-gate { font-size: 0.76rem; color: #9ab3a5; padding: 8px 10px; }
+
+    .tarjeta-socio-seleccionado-gate {
+        display: flex; align-items: center; justify-content: space-between; gap: 10px;
+        background: rgba(188,156,87,0.12); border: 1px solid rgba(188,156,87,0.4);
+        border-radius: 8px; padding: 10px 13px; margin-bottom: 18px;
+    }
+    .tarjeta-socio-seleccionado-gate span { font-weight: 700; color: var(--dorado-claro); font-size: 0.85rem; }
+    .btn-cambiar-socio-gate {
+        background: none; border: none; color: var(--dorado); font-size: 0.68rem;
+        font-weight: 700; text-decoration: underline; cursor: pointer; text-transform: uppercase;
     }
 
     .panel-visual-global {
@@ -580,6 +635,40 @@
     .tarjeta-visual-insignia h3 { font-family: 'Cinzel', serif; font-size: 1.35rem; color: var(--blanco); letter-spacing: 1px; margin-bottom: 4px; }
     .tarjeta-visual-insignia p { font-size: 0.8rem; color: var(--dorado); font-weight: 700; text-transform: uppercase; letter-spacing: 2px; }
     .pie-panel-visual { text-align: center; font-size: 0.75rem; color: rgba(244, 239, 226, 0.6); letter-spacing: 0.5px; }
+
+    /* =====================================================================
+       SWAP ANIMADO DE PANELES (solo escritorio, con hover)
+       En vez de reordenar con flex (no animable), ambos paneles se vuelven
+       absolutos dentro de la tarjeta y su posición "left" se transiciona.
+       Al activar modo-socios: el panel del formulario (login) se desliza a
+       la derecha y el panel visual (logo/insignia) se desliza a la
+       izquierda — exactamente el intercambio pedido. Debajo de 821px no
+       tiene sentido (no hay hover ni espacio para dos columnas), así que
+       esta sección no toca el layout apilado que ya existe para móvil.
+       ===================================================================== */
+    @media (min-width: 821px) {
+        .tarjeta-login-global { display: block; }
+        .panel-form-global {
+            position: absolute; top: 0; bottom: 0; left: 0; width: 52%;
+            /* display:block (en vez del "flex + justify-content:center" de la
+               regla base) — con contenido más alto que la caja, centrarlo
+               verticalmente deja la parte de arriba (logo + "Club de Golf
+               San Carlos") recortada y sin forma de hacerle scroll hacia
+               arriba. En bloque, el contenido simplemente empieza arriba y
+               si no cabe, se puede scrollear hacia abajo con overflow-y. */
+            display: block;
+            overflow-y: auto;
+            transition: left 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .panel-visual-global {
+            position: absolute; top: 0; bottom: 0; left: 52%; width: 48%;
+            transition: left 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .tarjeta-login-global.modo-socios .panel-form-global {
+            left: 48%; border-right: none; border-left: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .tarjeta-login-global.modo-socios .panel-visual-global { left: 0; }
+    }
 
     @media (max-width: 820px) {
         .tarjeta-login-global { flex-direction: column; max-width: 440px; border-radius: 18px; }
@@ -1127,49 +1216,122 @@
                       <span>Club de Golf<br>San Carlos</span>
                   </div>
                   <h2>Iniciar Sesión</h2>
-                  <p>Ingresa tus credenciales para acceder a la bitácora de salidas.</p>
+                  <p class="leyenda-modo-acceso" id="leyendaModoAcceso">Exclusivo para personal</p>
+                  <p id="subtituloGateAcceso">Ingresa tus credenciales para acceder a la bitácora de salidas.</p>
               </div>
 
-              <form id="formularioLoginGlobal">
-                  <div class="grupo-campo-lock">
-                      <label for="txtUsuarioGlobal">Usuario</label>
-                      <div class="input-envoltorio-lock">
-                          <!-- Se quitó el atributo "autofocus" nativo: dispara su propio
-                               scrollIntoView interno del navegador (que no respeta bien
-                               un contenedor position:fixed, sobre todo en navegadores de
-                               TV). El foco ahora se hace por JS en mostrarLoginGate()
-                               con { preventScroll: true }. -->
-                          <input type="text" id="txtUsuarioGlobal" required placeholder="Nombre de usuario" autocomplete="username">
-                          <span class="icono-lock-input">👤</span>
+              <!-- ===== VISTA STAFF (modo por defecto) ===== -->
+              <div id="vistaStaffLogin">
+                  <form id="formularioLoginGlobal">
+                      <div class="grupo-campo-lock">
+                          <label for="txtUsuarioGlobal">Usuario</label>
+                          <div class="input-envoltorio-lock">
+                              <!-- Se quitó el atributo "autofocus" nativo: dispara su propio
+                                   scrollIntoView interno del navegador (que no respeta bien
+                                   un contenedor position:fixed, sobre todo en navegadores de
+                                   TV). El foco ahora se hace por JS en mostrarLoginGate()
+                                   con { preventScroll: true }. -->
+                              <input type="text" id="txtUsuarioGlobal" required placeholder="Nombre de usuario" autocomplete="username">
+                              <span class="icono-lock-input">👤</span>
+                          </div>
                       </div>
+
+                      <div class="grupo-campo-lock">
+                          <label for="txtPasswordGlobal">Contraseña</label>
+                          <div class="input-envoltorio-lock">
+                              <input type="password" id="txtPasswordGlobal" required placeholder="••••••••" autocomplete="current-password">
+                              <span class="icono-lock-input">🔒</span>
+                          </div>
+                      </div>
+
+                      <p class="error-mensaje" id="msgErrorGlobal"></p>
+
+                      <button type="submit" class="btn-acceder-global" id="btnAccederGlobal">Acceder al Sistema</button>
+                  </form>
+              </div>
+
+              <!-- ===== VISTA SOCIOS (modo alterno: hover/click sobre el panel del logo) ===== -->
+              <div id="vistaSociosAuth">
+                  <div class="tabs-acceso-socio">
+                      <button type="button" class="tab-acceso-socio activa" id="tabSocioLogin">Iniciar sesión</button>
+                      <button type="button" class="tab-acceso-socio" id="tabSocioRegistro">Crear cuenta</button>
                   </div>
 
-                  <div class="grupo-campo-lock">
-                      <label for="txtPasswordGlobal">Contraseña</label>
-                      <div class="input-envoltorio-lock">
-                          <input type="password" id="txtPasswordGlobal" required placeholder="••••••••" autocomplete="current-password">
-                          <span class="icono-lock-input">🔒</span>
-                      </div>
+                  <!-- Login de socio -->
+                  <div class="panel-acceso-socio activo" id="panelSocioLogin">
+                      <form id="formSocioLoginGate">
+                          <div class="grupo-campo-lock">
+                              <label for="txtSocioUsuarioGate">Usuario</label>
+                              <div class="input-envoltorio-lock">
+                                  <input type="text" id="txtSocioUsuarioGate" required placeholder="Tu usuario" autocomplete="username">
+                                  <span class="icono-lock-input">👤</span>
+                              </div>
+                          </div>
+                          <div class="grupo-campo-lock">
+                              <label for="txtSocioPasswordGate">Contraseña</label>
+                              <div class="input-envoltorio-lock">
+                                  <input type="password" id="txtSocioPasswordGate" required placeholder="••••••••" autocomplete="current-password">
+                                  <span class="icono-lock-input">🔒</span>
+                              </div>
+                          </div>
+                          <p class="error-mensaje" id="msgErrorSocioGate"></p>
+                          <button type="submit" class="btn-acceder-global" id="btnAccederSocioGate">Entrar a Mis Reservas</button>
+                      </form>
                   </div>
 
-                  <p class="error-mensaje" id="msgErrorGlobal"></p>
+                  <!-- Registro de socio (restringido: debe existir ya en la lista de socios) -->
+                  <div class="panel-acceso-socio" id="panelSocioRegistro">
+                      <div id="pasoBuscarSocioGate">
+                          <div class="grupo-campo-lock">
+                              <label for="txtBuscarSocioGate">Busca tu nombre</label>
+                              <div class="input-envoltorio-lock">
+                                  <input type="text" id="txtBuscarSocioGate" placeholder="Escribe al menos 2 letras" autocomplete="off">
+                                  <span class="icono-lock-input">🔎</span>
+                              </div>
+                          </div>
+                          <div class="resultados-busqueda-socio-gate" id="resultadosBusquedaSocioGate"></div>
+                      </div>
 
-                  <button type="submit" class="btn-acceder-global" id="btnAccederGlobal">Acceder al Sistema</button>
-              </form>
+                      <div id="pasoDatosRegistroGate" style="display:none;">
+                          <div class="tarjeta-socio-seleccionado-gate">
+                              <span id="nombreSocioSeleccionadoGate"></span>
+                              <button type="button" class="btn-cambiar-socio-gate" id="btnCambiarSocioGate">Cambiar</button>
+                          </div>
+                          <form id="formSocioRegistroGate">
+                              <div class="grupo-campo-lock">
+                                  <label for="txtSocioNuevoUsuarioGate">Elige un usuario</label>
+                                  <div class="input-envoltorio-lock">
+                                      <input type="text" id="txtSocioNuevoUsuarioGate" required pattern="[a-z0-9_.]{3,50}" autocapitalize="off" spellcheck="false" placeholder="Ej. juan.perez">
+                                      <span class="icono-lock-input">✏️</span>
+                                  </div>
+                              </div>
+                              <div class="grupo-campo-lock">
+                                  <label for="txtSocioNuevaPasswordGate">Crea una contraseña</label>
+                                  <div class="input-envoltorio-lock">
+                                      <input type="password" id="txtSocioNuevaPasswordGate" required minlength="8" placeholder="Mínimo 8 caracteres">
+                                      <span class="icono-lock-input">🔒</span>
+                                  </div>
+                              </div>
+                              <p class="error-mensaje" id="msgErrorSocioRegistroGate"></p>
+                              <p class="exito-mensaje" id="msgExitoSocioRegistroGate"></p>
+                              <button type="submit" class="btn-acceder-global" id="btnRegistrarSocioGate">Crear mi cuenta</button>
+                          </form>
+                      </div>
+                  </div>
+              </div>
 
-              <div class="pie-login-seguridad">
+              <div class="pie-login-seguridad" id="pieLoginSeguridad">
                   🔒 Conexión Segura • Exclusivo para personal del Club
               </div>
 
-              <!-- Enlace de descubrimiento hacia el portal de socios: este gate es
-                   solo para el personal (staff); los socios que lleguen aquí por
-                   error tienen su propia app en portal-socios.html. -->
-              <a class="enlace-portal-socios" href="portal-socios.html">
-                  ⛳ ¿Eres socio del club? Entra a tu Portal de Reservas
-              </a>
+              <!-- Botón de cambio de modo: alternativa a hover/click sobre el panel
+                   del logo, para touch/mobile y como affordance explícito. -->
+              <button type="button" class="btn-cambiar-modo-gate" id="btnCambiarModoGate">
+                  ⛳ ¿Eres socio del club? Cambiar a Acceso de Socios
+              </button>
           </div>
 
-          <div class="panel-visual-global">
+          <div class="panel-visual-global" id="panelVisualGlobal">
               <div></div>
               <div class="tarjeta-visual-insignia">
                   <img src="img/Logo1.png" alt="Escudo San Carlos" onerror="this.src='img/icon.png'">
@@ -1636,6 +1798,34 @@
       const btnAccederGlobal = document.getElementById('btnAccederGlobal');
       const videoLock = document.getElementById('videoLock');
 
+      // ---- Gate dual (staff / socios) ----
+      const leyendaModoAcceso = document.getElementById('leyendaModoAcceso');
+      const subtituloGateAcceso = document.getElementById('subtituloGateAcceso');
+      const pieLoginSeguridad = document.getElementById('pieLoginSeguridad');
+      const btnCambiarModoGate = document.getElementById('btnCambiarModoGate');
+      const panelVisualGlobal = document.getElementById('panelVisualGlobal');
+
+      const tabSocioLogin = document.getElementById('tabSocioLogin');
+      const tabSocioRegistro = document.getElementById('tabSocioRegistro');
+      const panelSocioLogin = document.getElementById('panelSocioLogin');
+      const panelSocioRegistro = document.getElementById('panelSocioRegistro');
+
+      const formSocioLoginGate = document.getElementById('formSocioLoginGate');
+      const msgErrorSocioGate = document.getElementById('msgErrorSocioGate');
+      const btnAccederSocioGate = document.getElementById('btnAccederSocioGate');
+
+      const txtBuscarSocioGate = document.getElementById('txtBuscarSocioGate');
+      const resultadosBusquedaSocioGate = document.getElementById('resultadosBusquedaSocioGate');
+      const pasoBuscarSocioGate = document.getElementById('pasoBuscarSocioGate');
+      const pasoDatosRegistroGate = document.getElementById('pasoDatosRegistroGate');
+      const nombreSocioSeleccionadoGate = document.getElementById('nombreSocioSeleccionadoGate');
+      const btnCambiarSocioGate = document.getElementById('btnCambiarSocioGate');
+      const formSocioRegistroGate = document.getElementById('formSocioRegistroGate');
+      const txtSocioNuevoUsuarioGate = document.getElementById('txtSocioNuevoUsuarioGate');
+      const msgErrorSocioRegistroGate = document.getElementById('msgErrorSocioRegistroGate');
+      const msgExitoSocioRegistroGate = document.getElementById('msgExitoSocioRegistroGate');
+      let socioIdSeleccionadoGate = null;
+
       const modalUsuarios = document.getElementById('modalUsuarios');
       const modalHora = document.getElementById('modalHora');
       const modalConsultar = document.getElementById('modalConsultar');
@@ -1918,11 +2108,209 @@
           }
       }
 
+      // =========================================================================================
+      // GATE DUAL (STAFF / SOCIOS)
+      // Un mismo gate atiende a dos públicos: el personal (modo por defecto, tal como estaba)
+      // y los socios (modo alterno). alternarModoGate() agrega/quita la clase "modo-socios" en
+      // .tarjeta-login-global, lo que dispara (vía CSS) tanto la animación de intercambio de
+      // posiciones (panel de formulario <-> panel del logo) como el cambio de vista dentro del
+      // panel de formulario. Se activa al pasar el cursor sobre el panel del logo (que siempre
+      // representa "el otro lado", sin importar en qué posición esté en ese momento) o con el
+      // botón explícito (touch/accesibilidad). Un cooldown evita que la propia animación de 0.65s
+      // dispare el toggle varias veces si el cursor queda quieto sobre el panel mientras se mueve.
+      // =========================================================================================
+      let modoGateActual = 'staff'; // 'staff' | 'socios'
+      let cambioModoGateEnCurso = false;
+
+      function actualizarTextosGate() {
+          if (modoGateActual === 'socios') {
+              leyendaModoAcceso.textContent = 'Exclusivo socios';
+              subtituloGateAcceso.textContent = 'Inicia sesión o crea tu cuenta para reservar tu tee time.';
+              pieLoginSeguridad.textContent = '🔒 Conexión Segura • Portal de Socios del Club';
+              btnCambiarModoGate.textContent = '🛠️ ¿Eres personal del club? Cambiar a Acceso de Staff';
+          } else {
+              leyendaModoAcceso.textContent = 'Exclusivo para personal';
+              subtituloGateAcceso.textContent = 'Ingresa tus credenciales para acceder a la bitácora de salidas.';
+              pieLoginSeguridad.textContent = '🔒 Conexión Segura • Exclusivo para personal del Club';
+              btnCambiarModoGate.textContent = '⛳ ¿Eres socio del club? Cambiar a Acceso de Socios';
+          }
+      }
+
+      function alternarModoGate(forzarModo) {
+          if (cambioModoGateEnCurso) return;
+          const nuevoModo = forzarModo || (modoGateActual === 'staff' ? 'socios' : 'staff');
+          if (nuevoModo === modoGateActual) return;
+
+          modoGateActual = nuevoModo;
+          tarjetaLogin.classList.toggle('modo-socios', modoGateActual === 'socios');
+          actualizarTextosGate();
+
+          // Cooldown = duración de la transición CSS (0.65s) + margen, para que el
+          // hover repetido durante el propio deslizamiento no reinicie el toggle.
+          cambioModoGateEnCurso = true;
+          setTimeout(() => { cambioModoGateEnCurso = false; }, 750);
+      }
+
+      function reiniciarModoGateAStaff() {
+          modoGateActual = 'staff';
+          cambioModoGateEnCurso = false;
+          tarjetaLogin.classList.remove('modo-socios');
+          actualizarTextosGate();
+      }
+
+      // Hover: el panel visual (logo) siempre representa "el otro lado", sin importar
+      // si en este momento está a la izquierda o a la derecha — pasar el cursor ahí
+      // siempre alterna el modo. Click/tap hace lo mismo, para pantallas táctiles.
+      panelVisualGlobal.addEventListener('mouseenter', () => alternarModoGate());
+      panelVisualGlobal.addEventListener('click', () => alternarModoGate());
+      btnCambiarModoGate.addEventListener('click', () => alternarModoGate());
+
+      // ---- Tabs dentro de la vista de socios: Iniciar sesión / Crear cuenta ----
+      tabSocioLogin.addEventListener('click', () => {
+          tabSocioLogin.classList.add('activa');
+          tabSocioRegistro.classList.remove('activa');
+          panelSocioLogin.classList.add('activo');
+          panelSocioRegistro.classList.remove('activo');
+      });
+      tabSocioRegistro.addEventListener('click', () => {
+          tabSocioRegistro.classList.add('activa');
+          tabSocioLogin.classList.remove('activa');
+          panelSocioRegistro.classList.add('activo');
+          panelSocioLogin.classList.remove('activo');
+      });
+
+      // ---- Login de socio: misma sesión que usa portal-socios.html
+      // ($_SESSION['socio']), así que tras entrar aquí se redirige ahí directamente. ----
+      formSocioLoginGate.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          msgErrorSocioGate.style.display = 'none';
+          btnAccederSocioGate.disabled = true;
+          btnAccederSocioGate.classList.add('cargando');
+
+          try {
+              await apiFetch('socio_login.php', {
+                  method: 'POST',
+                  body: JSON.stringify({
+                      username: document.getElementById('txtSocioUsuarioGate').value.trim(),
+                      password: document.getElementById('txtSocioPasswordGate').value
+                  })
+              });
+              window.location.href = 'portal-socios.html';
+          } catch (err) {
+              msgErrorSocioGate.textContent = err.message;
+              msgErrorSocioGate.style.display = 'block';
+              btnAccederSocioGate.disabled = false;
+              btnAccederSocioGate.classList.remove('cargando');
+          }
+      });
+
+      // ---- Registro de socio: buscar nombre propio → elegir usuario/contraseña ----
+      let debounceBusquedaSocioGateTimer = null;
+      txtBuscarSocioGate.addEventListener('input', () => {
+          clearTimeout(debounceBusquedaSocioGateTimer);
+          const q = txtBuscarSocioGate.value.trim();
+          if (q.length < 2) {
+              resultadosBusquedaSocioGate.classList.remove('visible');
+              resultadosBusquedaSocioGate.innerHTML = '';
+              return;
+          }
+          debounceBusquedaSocioGateTimer = setTimeout(async () => {
+              try {
+                  const { data } = await apiFetch(`socio_buscar_para_registro.php?q=${encodeURIComponent(q)}`);
+                  if (!data.length) {
+                      resultadosBusquedaSocioGate.innerHTML = '<p class="aviso-busqueda-socio-gate">No encontramos ese nombre. Verifica que esté bien escrito o contacta al club.</p>';
+                  } else {
+                      resultadosBusquedaSocioGate.innerHTML = data.map(s =>
+                          `<div class="opcion-socio-gate" data-id="${s.id}" data-nombre="${s.nombre_completo.replace(/"/g, '&quot;')}">${s.nombre_completo}</div>`
+                      ).join('');
+                  }
+                  resultadosBusquedaSocioGate.classList.add('visible');
+              } catch (err) {
+                  resultadosBusquedaSocioGate.innerHTML = `<p class="aviso-busqueda-socio-gate">${err.message}</p>`;
+                  resultadosBusquedaSocioGate.classList.add('visible');
+              }
+          }, 300);
+      });
+
+      resultadosBusquedaSocioGate.addEventListener('click', (e) => {
+          const opcion = e.target.closest('.opcion-socio-gate');
+          if (!opcion) return;
+          socioIdSeleccionadoGate = opcion.getAttribute('data-id');
+          nombreSocioSeleccionadoGate.textContent = opcion.getAttribute('data-nombre');
+          pasoBuscarSocioGate.style.display = 'none';
+          pasoDatosRegistroGate.style.display = 'block';
+          resultadosBusquedaSocioGate.classList.remove('visible');
+      });
+
+      btnCambiarSocioGate.addEventListener('click', () => {
+          socioIdSeleccionadoGate = null;
+          pasoDatosRegistroGate.style.display = 'none';
+          pasoBuscarSocioGate.style.display = 'block';
+          txtBuscarSocioGate.value = '';
+          formSocioRegistroGate.reset();
+          msgErrorSocioRegistroGate.style.display = 'none';
+          msgExitoSocioRegistroGate.style.display = 'none';
+      });
+
+      // Normaliza el usuario a minúsculas/caracteres válidos mientras se escribe,
+      // igual que en portal-socios.html — evita que el pattern del input bloquee
+      // el envío en silencio si el socio escribe con mayúsculas.
+      txtSocioNuevoUsuarioGate.addEventListener('input', () => {
+          const cursor = txtSocioNuevoUsuarioGate.selectionStart;
+          const largoAntes = txtSocioNuevoUsuarioGate.value.length;
+          txtSocioNuevoUsuarioGate.value = txtSocioNuevoUsuarioGate.value.toLowerCase().replace(/[^a-z0-9_.]/g, '');
+          const largoDespues = txtSocioNuevoUsuarioGate.value.length;
+          if (cursor !== null) {
+              const nuevaPos = Math.max(0, cursor - (largoAntes - largoDespues));
+              txtSocioNuevoUsuarioGate.setSelectionRange(nuevaPos, nuevaPos);
+          }
+      });
+
+      formSocioRegistroGate.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          msgErrorSocioRegistroGate.style.display = 'none';
+          msgExitoSocioRegistroGate.style.display = 'none';
+
+          if (!socioIdSeleccionadoGate) {
+              msgErrorSocioRegistroGate.textContent = 'Primero busca y selecciona tu nombre.';
+              msgErrorSocioRegistroGate.style.display = 'block';
+              return;
+          }
+
+          const btn = document.getElementById('btnRegistrarSocioGate');
+          btn.disabled = true;
+          btn.classList.add('cargando');
+
+          try {
+              await apiFetch('socio_registro.php', {
+                  method: 'POST',
+                  body: JSON.stringify({
+                      socio_id: Number(socioIdSeleccionadoGate),
+                      username: txtSocioNuevoUsuarioGate.value.trim(),
+                      password: document.getElementById('txtSocioNuevaPasswordGate').value
+                  })
+              });
+              msgExitoSocioRegistroGate.textContent = '¡Cuenta creada! Ya puedes iniciar sesión.';
+              msgExitoSocioRegistroGate.style.display = 'block';
+              setTimeout(() => {
+                  tabSocioLogin.click();
+                  document.getElementById('txtSocioUsuarioGate').value = txtSocioNuevoUsuarioGate.value.trim();
+              }, 1100);
+          } catch (err) {
+              msgErrorSocioRegistroGate.textContent = err.message;
+              msgErrorSocioRegistroGate.style.display = 'block';
+          } finally {
+              btn.disabled = false;
+              btn.classList.remove('cargando');
+          }
+      });
+
       function mostrarLoginGate() {
           if (modoKiosco) return; // el modo kiosco nunca debe pedir login
           pantallaLoginGlobal.classList.remove('login-oculto');
           txtPasswordGlobal.value = '';
           msgErrorGlobal.style.display = 'none';
+          reiniciarModoGateAStaff(); // el gate siempre abre en modo staff por defecto
           window.scrollTo(0, 0);
           vigilanciaScrollGateActiva = true;
 

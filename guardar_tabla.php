@@ -16,6 +16,16 @@ if (!$filas) {
     error('No se recibieron filas para guardar.');
 }
 
+// Convierte cadenas vacías (o solo espacios) a NULL. El frontend siempre manda
+// texto para cada celda (nunca omite la clave, porque viene de textContent.trim()
+// de un <span>), así que sin esta normalización una celda "vacía" se guardaría
+// literal como '' en vez de NULL. Eso rompe cualquier consulta que dependa de
+// IS NULL para decidir qué hoyo está libre (p.ej. socio_hoyos_disponibles.php).
+function vacioANull($valor) {
+    $valor = trim($valor ?? '');
+    return $valor === '' ? null : $valor;
+}
+
 $stmtActual = $pdo->prepare(
     "SELECT t.fecha, t.tabla_num, t.hoyo, s.campo, s.detalles,
             s.jugador_1, s.jugador_2, s.jugador_3, s.jugador_4, s.jugador_5
@@ -35,11 +45,16 @@ $pdo->beginTransaction();
 try {
     foreach ($filas as $fila) {
         $j = $fila['jugadores'] ?? [];
-        $detalles = trim($fila['detalles'] ?? '');
 
-        $campoNuevo     = $fila['campo'] ?? 'Norte';
-        $detallesNuevo  = $detalles !== '' ? $detalles : null;
-        $jugadoresNuevo = [$j[0] ?? null, $j[1] ?? null, $j[2] ?? null, $j[3] ?? null, $j[4] ?? null];
+        $campoNuevo     = vacioANull($fila['campo'] ?? null) ?? 'Norte';
+        $detallesNuevo  = vacioANull($fila['detalles'] ?? null);
+        $jugadoresNuevo = [
+            vacioANull($j[0] ?? null),
+            vacioANull($j[1] ?? null),
+            vacioANull($j[2] ?? null),
+            vacioANull($j[3] ?? null),
+            vacioANull($j[4] ?? null),
+        ];
 
         $stmtActual->execute(['id' => $fila['tee_time_id']]);
         $actual = $stmtActual->fetch();

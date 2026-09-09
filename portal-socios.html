@@ -379,8 +379,8 @@
                   <form id="formRegistroSocio">
                       <div class="grupo-campo">
                           <label for="txtNuevoUsuarioSocio">Elige un usuario</label>
-                          <input type="text" id="txtNuevoUsuarioSocio" autocomplete="username" required placeholder="Ej. juan.perez" pattern="[a-z0-9_.]{3,50}">
-                          <p class="ayuda-campo">Solo minúsculas, números, punto y guión bajo.</p>
+                          <input type="text" id="txtNuevoUsuarioSocio" autocomplete="username" required placeholder="Ej. juan.perez" pattern="[a-z0-9_.]{3,50}" autocapitalize="off" spellcheck="false">
+                          <p class="ayuda-campo">Solo minúsculas, números, punto y guión bajo (se ajusta automáticamente).</p>
                       </div>
                       <div class="grupo-campo">
                           <label for="txtNuevaPasswordSocio">Crea una contraseña</label>
@@ -671,6 +671,32 @@
           formRegistroSocio.reset();
           msgErrorRegistroSocio.classList.remove('visible');
           msgExitoRegistroSocio.classList.remove('visible');
+      });
+
+      // =======================================================================
+      // NORMALIZACIÓN DEL CAMPO DE USUARIO
+      // El input tiene pattern="[a-z0-9_.]{3,50}" (solo minúsculas), igual que
+      // socio_registro.php en el servidor. Si el socio escribe con mayúsculas
+      // (autocorrección del teclado, nombre propio, etc.), el navegador
+      // bloquea el envío del formulario SIN mostrar ningún error nuestro —
+      // simplemente "no pasa nada" al dar clic en Crear mi cuenta. Para
+      // evitarlo, el valor se normaliza en cada tecleo: minúsculas y solo
+      // los caracteres permitidos, así el pattern nunca falla.
+      // =======================================================================
+      const txtNuevoUsuarioSocio = document.getElementById('txtNuevoUsuarioSocio');
+      txtNuevoUsuarioSocio.addEventListener('input', () => {
+          const cursor = txtNuevoUsuarioSocio.selectionStart;
+          const largoAntes = txtNuevoUsuarioSocio.value.length;
+          txtNuevoUsuarioSocio.value = txtNuevoUsuarioSocio.value
+              .toLowerCase()
+              .replace(/[^a-z0-9_.]/g, '');
+          const largoDespues = txtNuevoUsuarioSocio.value.length;
+          // Reubica el cursor teniendo en cuenta los caracteres eliminados,
+          // para no mandarlo siempre al final mientras el socio sigue escribiendo.
+          if (cursor !== null) {
+              const nuevaPos = Math.max(0, cursor - (largoAntes - largoDespues));
+              txtNuevoUsuarioSocio.setSelectionRange(nuevaPos, nuevaPos);
+          }
       });
 
       // =======================================================================
